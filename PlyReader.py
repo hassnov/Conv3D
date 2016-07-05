@@ -21,7 +21,9 @@ class PlyReader:
     flip_view_point = None
     sigma = None
     tree = None
-    sample_class_start = None
+    sample_class_start = 0
+    sample_class_current = 0
+
 
 
     def read_ply(self, file_name, num_samples=1000, sample_class_start=0):
@@ -34,6 +36,7 @@ class PlyReader:
         self.samples = Sampler.sample(self.data, -1, num_samples)
         self.tree = spatial.KDTree(self.data) 
         self.sample_class_start = sample_class_start
+        self.sample_class_current = sample_class_start
         self.num_classes = self.samples.shape[0]
         return self.data
     
@@ -69,6 +72,7 @@ class PlyReader:
         else:
             pc_samples = self.samples[self.index:self.samples.shape[0]]
             self.index = self.index + batch_size -self.samples.shape[0]
+            self.sample_class_current = self.sample_class_start
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
             
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1),np.int32)
@@ -124,9 +128,10 @@ class PlyReader:
                         #X[point_number*num_rotations + aug_num, x + self.patch_dim * (y + self.patch_dim * z)] = 1
                         X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
                 #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
-                Y[point_number*num_rotations + aug_num] = self.sample_class_start % num_classes
+                Y[point_number*num_rotations + aug_num, self.sample_class_current % num_classes] = 1
+
                 #patches.append(patch)
-            self.sample_class_start += 1
+            self.sample_class_current += 1
         return X, Y
 
 
@@ -139,6 +144,7 @@ class PlyReader:
         else:
             pc_samples = self.samples[self.index:self.samples.shape[0]]
             self.index = self.index + batch_size -self.samples.shape[0]
+            #self.sample_class_current = self.sample_class_start
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
             
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, num_channels))
@@ -209,9 +215,10 @@ class PlyReader:
                         if (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                             X[point_number*num_rotations + aug_num, x, y, 0] = 1 # rot_pt[2]
                     
-                Y[point_number*num_rotations + aug_num, self.sample_class_start % num_classes] = 1
+                Y[point_number*num_rotations + aug_num, self.sample_class_current % num_classes] = 1
+
                 #patches.append(patch)
-            self.sample_class_start += 1
+            self.sample_class_current += 1
         return X, Y
     
 

@@ -15,6 +15,7 @@ import tensorflow as tf
 import PlyReader
 import utils
 from twisted.test.test_tcp import numRounds
+import os
 
 
 
@@ -91,10 +92,9 @@ def build_graph_3d(data, keep_prob, num_classes):
     print 'data shape: ', data_shape
     NUM_CHANNELS = data_shape[4]
     conv0 = conv3d_layer("conv0",data,[5, 5, 5, NUM_CHANNELS, 64])
-    #pool0 = tf.nn.max_pool(conv0, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool0')
-    pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
+    #pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
     
-    conv1 = conv3d_layer("conv1", pool0, [5, 5, 5, 64, 64])
+    conv1 = conv3d_layer("conv1", conv0, [5, 5, 5, 64, 64])
     pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')   
     #conv2 = conv2d_layer("conv2",pool1,[12, 12, 32, 256])
     
@@ -168,7 +168,7 @@ import os.path
 
 def main():
     
-    d2 = True
+    d2 = False
     num_channels = 3
     
     INIT_RATE = 0.001
@@ -185,7 +185,9 @@ def main():
     
     BATCH_SIZE = 5
     
-    fileName = '/media/hasan/DATA/Fac/BMC Master/Thesis/Models/bunny/reconstruction/plytest/bun_zipper.ply'
+    dir1 = os.path.dirname(os.path.realpath(__file__))
+	    
+    fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
     reader.read_ply(fileName)
@@ -234,9 +236,10 @@ def main():
         decay_steps = int(batches_per_epoch)
         # Decay the learning rate exponentially based on the number of steps.
         lr = tf.train.exponential_decay(INIT_RATE, global_step, decay_steps, LR_DECAY_FACTOR,  staircase=True)
-        tf.scalar_summary('learning_rate', lr)
+        #tf.scalar_summary('learning_rate', lr)
         opt = tf.train.AdamOptimizer(lr)
         #opt = tf.train.GradientDescentOptimizer(0.000001)
+        #opt = tf.train.GradientDescentOptimizer(0.001)
         train_op = opt.minimize(cross_entropy, global_step=global_step)
         
         
@@ -248,7 +251,8 @@ def main():
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
+        sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
         # Create a saver and a summary op based on the tf-collection
@@ -256,7 +260,7 @@ def main():
         #summary_op = tf.merge_all_summaries()
         #summary_writer = tf.train.SummaryWriter('.', graph_def=sess.graph_def)
                 
-        #saver.restore(sess, 'model_1600_32.ckpt')   # Load previously trained weights
+        #saver.restore(sess, 'model_bunny_5_10.ckpt')   # Load previously trained weights
                 
         
         for epoch in range(nr_epochs):
@@ -280,7 +284,7 @@ def main():
                     #print "Batch:", batch ,"  Loss: ", error, " Test accuracy: ", acc, "   Duration (sec): ", duration
                     # Save the model checkpoint periodically.
                     if batch % 100 == 0:
-                        save_path = saver.save(sess, "model_1600_32_1.ckpt")
+                        save_path = saver.save(sess, "model_bunny_5_10.ckpt")
                         print "Model saved in file: ",save_path
 
 

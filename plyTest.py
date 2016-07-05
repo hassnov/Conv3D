@@ -336,19 +336,21 @@ def main_sample():
     mlab.show()
     print 'done'
     
+import os
 
 def main_patch():
-    sample_points = utils.read_ply('/media/hasan/DATA/Fac/BMC Master/Thesis/Models/bunny/reconstruction/plytest/bun_zipper_sampled.ply')
-    pc = utils.read_ply('/media/hasan/DATA/Fac/BMC Master/Thesis/Models/bunny/reconstruction/plytest/bun_zipper.ply')
-    num_rotations = 20
-    patch_dim = 32
-    relSampling = 0.05
-    relRadius = 0.1
-    pc_diameter = utils.get_pc_diameter(pc)
-    radius = pc_diameter*relRadius
-    relL = 0.07
-    l = relL*pc_diameter
-    extract_patches_vox(pc, sample_points, l=l, num_rotations=num_rotations, patch_dim=patch_dim)
+	dir1 = os.path.dirname(os.path.realpath(__file__))
+	sample_points = utils.read_ply(os.path.join(dir1, 'plytest/bun_zipper_sampled.ply'))
+	pc = utils.read_ply(os.path.join(dir1, 'plytest/bun_zipper.ply'))
+	num_rotations = 20
+	patch_dim = 32
+	relSampling = 0.05
+	relRadius = 0.1
+	pc_diameter = utils.get_pc_diameter(pc)
+	radius = pc_diameter*relRadius
+	relL = 0.07
+	l = relL*pc_diameter
+	extract_patches_vox(pc, sample_points, l=l, num_rotations=num_rotations, patch_dim=patch_dim)
 
 def main_noise():
     #pc = utils.read_ply('/media/hasan/DATA/Fac/BMC Master/Thesis/Models/bunny/reconstruction/plytest/bun_zipper_sampled.ply')
