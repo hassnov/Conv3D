@@ -1,11 +1,11 @@
 import numpy as np
 from numpy import linalg as LA
 from plyfile import PlyData
-from scipy import spatial
+#from scipy import spatial
 
 
-from sampling import Sampler, SampleAlgorithm
-import utils
+#from sampling import Sampler, SampleAlgorithm
+#import utils
 
 
 # Standard bounding box
@@ -123,19 +123,3 @@ def my_range(start, end, step):
         yield start
         start += step
         
-
-def augment(ref_points, l, num_rotations=20, patch_dim=24):
-    patches = []
-    z_axis = np.array([0, 0, 1])
-    for theta in my_range(-np.pi, np.pi, (2*np.pi)/num_rotations):
-        rot2d = utils.angle_axis_to_rotation(theta, z_axis)
-        rot_points = utils.transform_pc(ref_points, rot2d)
-        patch = np.zeros((patch_dim, patch_dim, patch_dim), dtype='int32')
-        for rot_pt in rot_points:
-            x = int(patch_dim*(rot_pt[0] / l) + patch_dim / 2)
-            y = int(patch_dim*(rot_pt[1] / l) + patch_dim / 2)
-            z = int(patch_dim*(rot_pt[2] / l) + patch_dim / 2)
-            if (z >= 0) and (z < patch_dim) and (y >= 0) and (y < patch_dim) and (x >= 0) and (x < patch_dim):
-                patch[x, y, z] = 1
-        patches.append(patch)
-     

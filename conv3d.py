@@ -174,11 +174,10 @@ def main():
     INIT_RATE = 0.001
     LR_DECAY_FACTOR = 0.1
     
-    BATCH_SIZE = 100
     nr_epochs = 500
     
     num_rotations = 10
-    patch_dim = 24
+    patch_dim = 32
     #relSampling = 0.05
     #relRadius = 0.1
     #radius = pc_diameter*relRadius

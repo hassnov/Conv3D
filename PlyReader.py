@@ -11,7 +11,7 @@ class PlyReader:
     
     data = None
     samples = None
-    num_classes = 1
+    num_classes = None
     index = 0
     l = None
     num_rotations = None
@@ -21,7 +21,7 @@ class PlyReader:
     flip_view_point = None
     sigma = None
     tree = None
-    sample_class_start = 0
+    sample_class_start = None
 
 
     def read_ply(self, file_name, num_samples=1000, sample_class_start=0):
@@ -71,8 +71,8 @@ class PlyReader:
             self.index = self.index + batch_size -self.samples.shape[0]
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
             
-        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1))
-        Y = np.zeros((batch_size*  num_rotations, num_classes))
+        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1),np.int32)
+        Y = np.zeros((batch_size*  num_rotations), np.int32)
         
         r = self.l / np.sqrt(2)
         
@@ -124,7 +124,7 @@ class PlyReader:
                         #X[point_number*num_rotations + aug_num, x + self.patch_dim * (y + self.patch_dim * z)] = 1
                         X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
                 #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
-                Y[point_number*num_rotations + aug_num, self.sample_class_start] = 1
+                Y[point_number*num_rotations + aug_num] = self.sample_class_start % num_classes
                 #patches.append(patch)
             self.sample_class_start += 1
         return X, Y
@@ -209,7 +209,7 @@ class PlyReader:
                         if (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                             X[point_number*num_rotations + aug_num, x, y, 0] = 1 # rot_pt[2]
                     
-                Y[point_number*num_rotations + aug_num, self.sample_class_start] = 1
+                Y[point_number*num_rotations + aug_num, self.sample_class_start % num_classes] = 1
                 #patches.append(patch)
             self.sample_class_start += 1
         return X, Y
