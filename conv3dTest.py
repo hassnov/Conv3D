@@ -52,7 +52,31 @@ def build_graph(data, keep_prob, num_classes, d2=False):
         return build_graph_3d(data, keep_prob, num_classes)
 
 def build_graph_3d(data, keep_prob, num_classes):
-    print 'no 3d'
+    W_conv1 = weight_variable([3, 3, 3, 1, 32])
+    b_conv1 = bias_variable([32])
+    h_conv1 = tf.nn.relu(conv3d(data, W_conv1) + b_conv1)
+    h_pool1 = max_pool_2x2x2(h_conv1)
+    
+    W_conv2 = weight_variable([3, 3, 3, 32, 64])
+    b_conv2 = bias_variable([64])
+    h_conv2 = tf.nn.relu(conv3d(h_pool1, W_conv2) + b_conv2)
+    h_pool2 = max_pool_2x2x2(h_conv2)
+    
+    shape = h_pool2.get_shape().as_list()
+    fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4]  # Resolve input dim into fc0 from conv2-filters
+    
+    W_fc1 = weight_variable([fc0_inputdim, 1024])
+    b_fc1 = bias_variable([1024])
+    
+    h_pool2_flat = tf.reshape(h_pool2, [-1, fc0_inputdim])
+    h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+    
+    h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+    W_fc2 = weight_variable([1024, num_classes])
+    b_fc2 = bias_variable([num_classes])
+    W_conv1 = weight_variable([5, 5, 1, 32])
+    b_conv1 = bias_variable([32])
+    return tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 
 def build_graph_2d(data, keep_prob, num_classes):
