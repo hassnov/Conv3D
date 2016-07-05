@@ -351,6 +351,7 @@ def main_patch():
 	relL = 0.07
 	l = relL*pc_diameter
 	extract_patches_vox(pc, sample_points, l=l, num_rotations=num_rotations, patch_dim=patch_dim)
+<<<<<<< HEAD
 
 def main_noise():
     #pc = utils.read_ply('/media/hasan/DATA/Fac/BMC Master/Thesis/Models/bunny/reconstruction/plytest/bun_zipper_sampled.ply')
@@ -362,5 +363,8 @@ def main_noise():
     
     plotutils.show_pc(noisy)
     mlab.show()
+=======
+        
+>>>>>>> 86a586db2e8eb813099b577d37499621efabc328
 
 main_patch()

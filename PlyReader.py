@@ -74,8 +74,8 @@ class PlyReader:
             self.index = self.index + batch_size -self.samples.shape[0]
             self.sample_class_current = self.sample_class_start
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
-            
-        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1),np.int32)
+
+        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
         Y = np.zeros((batch_size*  num_rotations), np.int32)
         
         r = self.l / np.sqrt(2)
@@ -128,8 +128,7 @@ class PlyReader:
                         #X[point_number*num_rotations + aug_num, x + self.patch_dim * (y + self.patch_dim * z)] = 1
                         X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
                 #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
-                Y[point_number*num_rotations + aug_num, self.sample_class_current % num_classes] = 1
-
+                Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
             self.sample_class_current += 1
         return X, Y
@@ -148,7 +147,7 @@ class PlyReader:
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
             
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, num_channels))
-        Y = np.zeros((batch_size*  num_rotations, num_classes))
+        Y = np.zeros((batch_size*  num_rotations))
         
         r = self.l / np.sqrt(2)
         
@@ -215,7 +214,7 @@ class PlyReader:
                         if (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                             X[point_number*num_rotations + aug_num, x, y, 0] = 1 # rot_pt[2]
                     
-                Y[point_number*num_rotations + aug_num, self.sample_class_current % num_classes] = 1
+                Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
             self.sample_class_current += 1
         return X, Y
