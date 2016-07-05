@@ -216,7 +216,6 @@ class PlyReader:
                             X[point_number*num_rotations + aug_num, x, y, 0] = 1 # rot_pt[2]
                     
                 Y[point_number*num_rotations + aug_num, self.sample_class_current % num_classes] = 1
-
                 #patches.append(patch)
             self.sample_class_current += 1
         return X, Y
