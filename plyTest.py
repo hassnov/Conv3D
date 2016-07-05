@@ -209,6 +209,6 @@ def main_patch():
 	relL = 0.07
 	l = relL*pc_diameter
 	extract_patches_vox(pc, sample_points, l=l, num_rotations=num_rotations, patch_dim=patch_dim)
-
+        
 
 main_patch()

@@ -91,10 +91,10 @@ def build_graph_3d(data, keep_prob, num_classes):
     data_shape = data.get_shape().as_list()
     print 'data shape: ', data_shape
     NUM_CHANNELS = data_shape[4]
-    conv0 = conv3d_layer("conv0",data,[5, 5, 5, NUM_CHANNELS, 64])
-    #pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
+    conv0 = conv3d_layer("conv0",data,[3, 3, 3, NUM_CHANNELS, 32])
+    pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
     
-    conv1 = conv3d_layer("conv1", conv0, [5, 5, 5, 64, 64])
+    conv1 = conv3d_layer("conv1", pool0, [3, 3, 3, 32, 32])
     pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')   
     #conv2 = conv2d_layer("conv2",pool1,[12, 12, 32, 256])
     
@@ -103,15 +103,18 @@ def build_graph_3d(data, keep_prob, num_classes):
     
     fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
     
+
+
     fc0_drop = tf.nn.dropout(fc0, keep_prob)
     
     #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
     W_fc1 = weight_variable([128, num_classes])
     b_fc1 = bias_variable([num_classes])
+    return tf.matmul(fc0_drop, W_fc1) + b_fc1
 
-    y_conv=tf.nn.softmax(tf.matmul(fc0_drop, W_fc1) + b_fc1)
+    #y_conv=tf.nn.softmax(tf.matmul(fc0_drop, W_fc1) + b_fc1)
                                                                                                                                                                                                                                                 
-    return y_conv #tf.reshape(y_conv, [data_shape[0],data_shape[1],data_shape[2]])
+    #return y_conv #tf.reshape(y_conv, [data_shape[0],data_shape[1],data_shape[2]])
 
 def build_graph_2d(data, keep_prob, num_classes):
     data_shape = data.get_shape().as_list();
@@ -132,7 +135,7 @@ def build_graph_2d(data, keep_prob, num_classes):
     #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
     W_fc1 = weight_variable([512, num_classes])
     b_fc1 = bias_variable([num_classes])
-
+    return tf.matmul(fc0_drop, W_fc1) + b_fc1
     y_conv=tf.nn.softmax(tf.matmul(fc0_drop, W_fc1) + b_fc1)
      
     return y_conv #tf.reshape(y_conv, [data_shape[0],data_shape[1],data_shape[2]])
@@ -168,10 +171,10 @@ import os.path
 
 def main():
     
-    d2 = False
-    num_channels = 3
+    d2 = True
+    num_channels = 1
     
-    INIT_RATE = 0.001
+    INIT_RATE = 0.01
     LR_DECAY_FACTOR = 0.1
     
     nr_epochs = 500
@@ -183,14 +186,14 @@ def main():
     #radius = pc_diameter*relRadius
     relL = 0.07
     
-    BATCH_SIZE = 5
+    BATCH_SIZE = 2
     
     dir1 = os.path.dirname(os.path.realpath(__file__))
 	    
     fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
-    reader.read_ply(fileName)
+    reader.read_ply(fileName, num_samples=2)
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
@@ -212,7 +215,7 @@ def main():
         # Create input/output placeholder variables for the graph (to be filled manually with data)
         # Placeholders MUST be filled for each session.run()
         net_x = tf.placeholder("float", X.shape, name="in_x")
-        net_y = tf.placeholder("float", Y.shape, name="in_y")
+        net_y = tf.placeholder(tf.int32, Y.shape, name="in_y")
         
         
         #lr = tf.placeholder(tf.float32)
@@ -222,15 +225,18 @@ def main():
         
         print 'output shape: ',output.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()
-        assert (output.get_shape().as_list() == net_y.get_shape().as_list() )
+        #assert (output.get_shape().as_list() == net_y.get_shape().as_list() )
         
         global_step = tf.Variable(0, trainable=False)
         
         #compute cross entropy loss
         
-        logy = tf.log(output + 1e-10)
-        mult = net_y*logy
-        cross_entropy = -tf.reduce_sum(mult)
+        #logy = tf.log(output + 1e-10)
+        #mult = net_y*logy
+        #cross_entropy = -tf.reduce_sum(mult)
+        #cross_entropy = tf.reduce_mean(-tf.reduce_sum(net_y * tf.log(output), reduction_indices=[1]))
+        cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(output, net_y))
+        softmx=tf.nn.softmax(output)
         #tf.reshape(net_y, [net_y.get_shape().as_list()[1],net_y.get_shape().as_list()[0]])
         
         decay_steps = int(batches_per_epoch)
@@ -238,7 +244,7 @@ def main():
         lr = tf.train.exponential_decay(INIT_RATE, global_step, decay_steps, LR_DECAY_FACTOR,  staircase=True)
         #tf.scalar_summary('learning_rate', lr)
         opt = tf.train.AdamOptimizer(lr)
-        #opt = tf.train.GradientDescentOptimizer(0.000001)
+        #opt = tf.train.GradientDescentOptimizer(lr)
         #opt = tf.train.GradientDescentOptimizer(0.001)
         train_op = opt.minimize(cross_entropy, global_step=global_step)
         
@@ -251,7 +257,7 @@ def main():
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
