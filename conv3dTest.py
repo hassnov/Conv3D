@@ -17,6 +17,8 @@ import utils
 from twisted.test.test_tcp import numRounds
 import os
 from tensorflow.examples.tutorials.mnist import input_data
+import cv2
+from matplotlib import pyplot as plt
 
 IMAGE_SIZE = 28
 NUM_CHANNELS = 1
@@ -67,12 +69,12 @@ def build_graph(data, keep_prob, num_classes, d2=False):
         return build_graph_3d(data, keep_prob, num_classes)
 
 def build_graph_3d(data, keep_prob, num_classes):
-    W_conv1 = weight_variable([3, 3, 3, 1, 32])
+    W_conv1 = weight_variable([5, 5, 5, 1, 32])
     b_conv1 = bias_variable([32])
     h_conv1 = tf.nn.relu(conv3d(data, W_conv1) + b_conv1)
     h_pool1 = max_pool_2x2x2(h_conv1)
     
-    W_conv2 = weight_variable([3, 3, 3, 32, 64])
+    W_conv2 = weight_variable([5, 5, 5, 32, 64])
     b_conv2 = bias_variable([64])
     h_conv2 = tf.nn.relu(conv3d(h_pool1, W_conv2) + b_conv2)
     h_pool2 = max_pool_2x2x2(h_conv2)
@@ -89,18 +91,19 @@ def build_graph_3d(data, keep_prob, num_classes):
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
     W_fc2 = weight_variable([1024, num_classes])
     b_fc2 = bias_variable([num_classes])
-    W_conv1 = weight_variable([5, 5, 1, 32])
-    b_conv1 = bias_variable([32])
-    return tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+   
+    regularizers = (tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1) +
+      tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc2))
+    return tf.matmul(h_fc1_drop, W_fc2) + b_fc2, regularizers
 
 
 def build_graph_2d(data, keep_prob, num_classes):
-    W_conv1 = weight_variable([3, 3, 1, 32])
+    W_conv1 = weight_variable([5, 5, 1, 32])
     b_conv1 = bias_variable([32])
     h_conv1 = tf.nn.relu(conv2d(data, W_conv1) + b_conv1)
     h_pool1 = max_pool_2x2(h_conv1)
     
-    W_conv2 = weight_variable([3, 3, 32, 64])
+    W_conv2 = weight_variable([5, 5, 32, 64])
     b_conv2 = bias_variable([64])
     h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
     h_pool2 = max_pool_2x2(h_conv2)
@@ -108,38 +111,64 @@ def build_graph_2d(data, keep_prob, num_classes):
     shape = h_pool2.get_shape().as_list()
     fc0_inputdim = shape[1]*shape[2]*shape[3]  # Resolve input dim into fc0 from conv2-filters
     
-    W_fc1 = weight_variable([fc0_inputdim, 1024])
-    b_fc1 = bias_variable([1024])
+    W_fc1 = weight_variable([fc0_inputdim, 512])
+    b_fc1 = bias_variable([512])
     
     h_pool2_flat = tf.reshape(h_pool2, [-1, fc0_inputdim])
     h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
     
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
-    W_fc2 = weight_variable([1024, num_classes])
+    W_fc2 = weight_variable([512, num_classes])
     b_fc2 = bias_variable([num_classes])
-    W_conv1 = weight_variable([5, 5, 1, 32])
-    b_conv1 = bias_variable([32])
-    return tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+
+    regularizers = (tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1) +
+          tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc2))
+    return tf.matmul(h_fc1_drop, W_fc2) + b_fc2, regularizers
 
 SEED = None
-NUM_LABELS = 2
-
-
+#NUM_LABELS = 2
 
 
 import os.path
 
 def main():
     
-
+    
     nr_epochs = 500
     
-    BATCH_SIZE = 16
-    num_epochs = 10
-    train_size = 256
+    BATCH_SIZE = 20
+    num_rotations = 10
+    patch_dim = 28
+    relL = 0.07
+    
+    
+    dir1 = os.path.dirname(os.path.realpath(__file__))
+        
+    fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
+    reader = PlyReader.PlyReader()
+    start_time = time.time()
+    reader.read_ply(fileName, num_samples=10)
+    print 'reading time: ', time.time() - start_time
+    pc_diameter = utils.get_pc_diameter(reader.data)
+    l = relL*pc_diameter
+    reader.set_variables(l=l, patch_dim=patch_dim)
+    samples_count = reader.compute_total_samples(num_rotations)
+    batches_per_epoch = samples_count/BATCH_SIZE
+    print "Batches per epoch:", batches_per_epoch
+    
+    
+    
+    num_epochs = 1000
+    train_size = 100
     train_data, train_labels = fake_data(train_size)
     
-    offset = (0 * BATCH_SIZE) % (train_size - BATCH_SIZE)
+    train_data, train_labels = reader.next_batch(train_size // num_rotations, num_rotations=num_rotations, num_channels=1, d2 = True)
+    ii = numpy.random.permutation(train_labels.shape[0])
+    #train_data = train_data[ii]
+    #train_labels = train_labels[ii]
+    NUM_LABELS = reader.num_classes
+    print 'NUM_LABELS: ', NUM_LABELS
+    offset = 0
     X = train_data[offset:(offset + BATCH_SIZE), ...]
     Y = train_labels[offset:(offset + BATCH_SIZE)]
     
@@ -151,73 +180,15 @@ def main():
     #Y = numpy.reshape(Y, [50,])
     
     with tf.Graph().as_default() as graph:
+        
         net_x = tf.placeholder("float", X.shape, name="in_x")
         net_y = tf.placeholder(tf.int32, Y.shape, name="in_y")
         
-        conv1_weights = tf.Variable(
-                                    tf.truncated_normal([5, 5, NUM_CHANNELS, 32],  # 5x5 filter, depth 32.
-                          stddev=0.1,
-                          seed=SEED))
-        conv1_biases = tf.Variable(tf.zeros([32]))
-        conv2_weights = tf.Variable(
-          tf.truncated_normal([5, 5, 32, 64],
-                              stddev=0.1,
-                              seed=SEED))
-        conv2_biases = tf.Variable(tf.constant(0.1, shape=[64]))
-        fc1_weights = tf.Variable(  # fully connected, depth 512.
-          tf.truncated_normal(
-              [IMAGE_SIZE // 4 * IMAGE_SIZE // 4 * 64, 512],
-              stddev=0.1,
-              seed=SEED))
-        fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
-        fc2_weights = tf.Variable(
-          tf.truncated_normal([512, NUM_LABELS],
-                              stddev=0.1,
-                              seed=SEED))
-        fc2_biases = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]))
-      
-        def model(data, train=False):
-            conv = tf.nn.conv2d(data,
-                                conv1_weights,
-                                strides=[1, 1, 1, 1],
-                                padding='SAME')
-            # Bias and rectified linear non-linearity.
-            relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
-            # Max pooling. The kernel size spec {ksize} also follows the layout of
-            # the data. Here we have a pooling window of 2, and a stride of 2.
-            pool = tf.nn.max_pool(relu,
-                                  ksize=[1, 2, 2, 1],
-                                  strides=[1, 2, 2, 1],
-                                  padding='SAME')
-            conv = tf.nn.conv2d(pool,
-                                conv2_weights,
-                                strides=[1, 1, 1, 1],
-                                padding='SAME')
-            relu = tf.nn.relu(tf.nn.bias_add(conv, conv2_biases))
-            pool = tf.nn.max_pool(relu,
-                                  ksize=[1, 2, 2, 1],
-                                  strides=[1, 2, 2, 1],
-                                  padding='SAME')
-            # Reshape the feature map cuboid into a 2D matrix to feed it to the
-            # fully connected layers.
-            pool_shape = pool.get_shape().as_list()
-            reshape = tf.reshape(
-                pool,
-                [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
-            # Fully connected layer. Note that the '+' operation automatically
-            # broadcasts the biases.
-            hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
-            # Add a 50% dropout during training only. Dropout also scales
-            # activations such that no rescaling is needed at evaluation time.
-            if train:
-              hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
-            return tf.matmul(hidden, fc2_weights) + fc2_biases
-        
-        logits = model(net_x, True)
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+        logits, regularizers = build_graph_2d(net_x, 0.5, NUM_LABELS)
+        loss= tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                                              logits, net_y))
-        regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
-                  tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
+        #regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
+         #         tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
         
         loss += 5e-4 * regularizers
         print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
@@ -234,9 +205,8 @@ def main():
             0.95,                # Decay rate.
             staircase=True)
         # Use simple momentum for the optimization.
-        optimizer = tf.train.MomentumOptimizer(learning_rate,
-                                               0.9).minimize(loss,
-                                                             global_step=batch)
+        #optimizer = tf.train.MomentumOptimizer(0.00001, 0.9).minimize(loss, global_step=batch)
+        optimizer = tf.train.AdamOptimizer(0.00001).minimize(loss, global_step=batch)
         train_prediction = tf.nn.softmax(logits)
         
         # Create initialization "op" and run it with our session 
@@ -253,8 +223,12 @@ def main():
                         
         for step in xrange(int(num_epochs * train_size) // BATCH_SIZE):
             offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
+            #offset = 0
             batch_data = train_data[offset:(offset + BATCH_SIZE), ...]
             batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
+            
+
+            
             feed_dict = {net_x: batch_data,
                    net_y: batch_labels}
             _, l, lr, _ = sess.run(
