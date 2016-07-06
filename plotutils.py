@@ -4,7 +4,7 @@ from mayavi import mlab
 import numpy as np
 import utils
 
-def plot_patch(patch):
+def plot_patch_3D(patch):
     x = []
     y = []
     z = []
