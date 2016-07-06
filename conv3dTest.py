@@ -158,7 +158,7 @@ def main():
     
     
     
-    num_epochs = 1000
+    num_epochs = 10000
     train_size = 100
     train_data, train_labels = fake_data(train_size)
     
@@ -198,15 +198,15 @@ def main():
         
         batch = tf.Variable(0)
         # Decay once per epoch, using an exponential schedule starting at 0.01.
-        learning_rate = tf.train.exponential_decay(
-            0.01,                # Base learning rate.
-            batch * BATCH_SIZE,  # Current index into the dataset.
-            train_size,          # Decay step.
-            0.95,                # Decay rate.
-            staircase=True)
+        #learning_rate = tf.train.exponential_decay(
+        #    0.01,                # Base learning rate.
+         #   batch * BATCH_SIZE,  # Current index into the dataset.
+          #  train_size,          # Decay step.
+           # 0.95,                # Decay rate.
+            #staircase=True)
         # Use simple momentum for the optimization.
         #optimizer = tf.train.MomentumOptimizer(0.00001, 0.9).minimize(loss, global_step=batch)
-        optimizer = tf.train.AdamOptimizer(0.00001).minimize(loss, global_step=batch)
+        optimizer = tf.train.AdamOptimizer(0.01).minimize(loss, global_step=batch)
         train_prediction = tf.nn.softmax(logits)
         
         # Create initialization "op" and run it with our session 
@@ -231,10 +231,10 @@ def main():
             
             feed_dict = {net_x: batch_data,
                    net_y: batch_labels}
-            _, l, lr, _ = sess.run(
-                                             [optimizer, loss, learning_rate, train_prediction],
+            _, l, _ = sess.run(
+                                             [optimizer, loss, train_prediction],
                                              feed_dict=feed_dict)
-            print 'Step: ', step, '    loss: ', l, '    lr: ', lr
+            print 'Step: ', step, '    loss: ', l#, '    lr: ', lr
 
     print 'done'
 if __name__ == "__main__":
