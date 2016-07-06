@@ -61,11 +61,20 @@ def conv3d_layer(name, input_data, shape, wd=0.1):
     #activation_summary(layer)
     return layer
 
+
+def conv3d(x, W):
+    return tf.nn.conv3d(x, W, strides=[1, 1, 1, 1, 1], padding='SAME')
+
+def max_pool_2x2x2(x):
+  return tf.nn.max_pool(x, ksize=[1, 2, 2, 2, 1],
+                        strides=[1, 2, 2, 2, 1], padding='SAME')
+  
 def fc_layer(name, input_data, shape, wd=0.1):
     with tf.variable_scope(name):
         weights = tf.Variable(xavier_fc_init(shape), name='weights')
         if wd>0:
             tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(weights), wd, name='decay'))
+        
         biases = tf.Variable(tf.zeros([shape[1]]), name="biases")
         input_flat = tf.reshape(input_data, [-1,shape[0]])
         layer = tf.nn.relu(tf.nn.xw_plus_b(input_flat, weights, biases, name=name))
@@ -99,18 +108,25 @@ def build_graph_3d(data, keep_prob, num_classes):
     #conv2 = conv2d_layer("conv2",pool1,[12, 12, 32, 256])
     
     shape = pool1.get_shape().as_list()
-    fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4];   # Resolve input dim into fc0 from conv2-filters
+    fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4];   # Resolve input dim into fc0 from conv3-filters
     
-    fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
+    #fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
+    W_fc0 = weight_variable([fc0_inputdim, 512])
+    b_fc0 = bias_variable([512])
     
+    h_pool2_flat = tf.reshape(pool1, [-1, fc0_inputdim])
+    h_fc0 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc0) + b_fc0)
 
 
-    fc0_drop = tf.nn.dropout(fc0, keep_prob)
+    fc0_drop = tf.nn.dropout(h_fc0, keep_prob)
     
     #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
-    W_fc1 = weight_variable([128, num_classes])
+    W_fc1 = weight_variable([512, num_classes])
     b_fc1 = bias_variable([num_classes])
-    return tf.matmul(fc0_drop, W_fc1) + b_fc1
+    
+    regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
+      tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1))
+    return tf.matmul(fc0_drop, W_fc1) + b_fc1, regularizers
 
     #y_conv=tf.nn.softmax(tf.matmul(fc0_drop, W_fc1) + b_fc1)
                                                                                                                                                                                                                                                 
@@ -119,27 +135,29 @@ def build_graph_3d(data, keep_prob, num_classes):
 def build_graph_2d(data, keep_prob, num_classes):
     data_shape = data.get_shape().as_list();
     NUM_CHANNELS = data_shape[3]
-    conv0 = conv2d_layer("conv0",data,[5, 5, NUM_CHANNELS, 64])
+    conv0 = conv2d_layer("conv0",data,[3, 3, NUM_CHANNELS, 32])
     pool0 = tf.nn.max_pool(conv0, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool0')
-    conv1 = conv2d_layer("conv1",pool0,[5, 5, 64, 128])
+    conv1 = conv2d_layer("conv1",pool0,[3, 3, 32, 32])
     pool1 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')   
-    conv2 = conv2d_layer("conv2",pool1,[5, 5, 128, 64])
+    #conv2 = conv2d_layer("conv2",pool1,[3, 3, 32, 32])
     
-    shape = conv2.get_shape().as_list()
+    shape = pool1.get_shape().as_list()
     fc0_inputdim = shape[1]*shape[2]*shape[3];   # Resolve input dim into fc0 from conv2-filters
     
-    fc0 = fc_layer("fc0", conv2, [fc0_inputdim, 512])   
+    fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 1024])   
     
     fc0_drop = tf.nn.dropout(fc0, keep_prob)
     
     #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
-    W_fc1 = weight_variable([512, num_classes])
+    W_fc1 = weight_variable([1024, num_classes])
     b_fc1 = bias_variable([num_classes])
     return tf.matmul(fc0_drop, W_fc1) + b_fc1
-    y_conv=tf.nn.softmax(tf.matmul(fc0_drop, W_fc1) + b_fc1)
+    #y_conv=tf.nn.softmax(tf.matmul(fc0_drop, W_fc1) + b_fc1)
      
-    return y_conv #tf.reshape(y_conv, [data_shape[0],data_shape[1],data_shape[2]])
+    #return y_conv #tf.reshape(y_conv, [data_shape[0],data_shape[1],data_shape[2]])
 
+
+    
 
 def build_graph_orig(data, keep_prob):
     data_shape = data.get_shape().as_list();
@@ -171,33 +189,33 @@ import os.path
 
 def main():
     
-    d2 = True
+    d2 = False
     num_channels = 1
     
-    INIT_RATE = 0.01
+    INIT_RATE = 0.00001
     LR_DECAY_FACTOR = 0.1
     
     nr_epochs = 500
     
-    num_rotations = 10
-    patch_dim = 32
+    num_rotations = 5
+    patch_dim = 10
     #relSampling = 0.05
     #relRadius = 0.1
     #radius = pc_diameter*relRadius
-    relL = 0.07
+    relL = 0.05
     
-    BATCH_SIZE = 2
+    BATCH_SIZE = 10
     
     dir1 = os.path.dirname(os.path.realpath(__file__))
 	    
     fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
-    reader.read_ply(fileName, num_samples=2)
+    reader.read_ply(fileName, num_samples=20)
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
-    reader.set_variables(l=l, num_rotations=num_rotations, patch_dim=patch_dim)
+    reader.set_variables(l=l, patch_dim=patch_dim)
     samples_count = reader.compute_total_samples(num_rotations)
     batches_per_epoch = samples_count/BATCH_SIZE
     print "Batches per epoch:", batches_per_epoch
@@ -221,9 +239,9 @@ def main():
         #lr = tf.placeholder(tf.float32)
         # Build the graph that computes predictions and assert that network output is compatible
         
-        output = build_graph(net_x, 0.5, reader.num_classes, d2=d2)
+        logits, regularizers = build_graph(net_x, 0.5, reader.num_classes, d2=d2)
         
-        print 'output shape: ',output.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
+        print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()
         #assert (output.get_shape().as_list() == net_y.get_shape().as_list() )
         
@@ -235,23 +253,20 @@ def main():
         #mult = net_y*logy
         #cross_entropy = -tf.reduce_sum(mult)
         #cross_entropy = tf.reduce_mean(-tf.reduce_sum(net_y * tf.log(output), reduction_indices=[1]))
-        cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(output, net_y))
-        softmx=tf.nn.softmax(output)
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
+        loss += 5e-4 * regularizers
         #tf.reshape(net_y, [net_y.get_shape().as_list()[1],net_y.get_shape().as_list()[0]])
         
         decay_steps = int(batches_per_epoch)
         # Decay the learning rate exponentially based on the number of steps.
         lr = tf.train.exponential_decay(INIT_RATE, global_step, decay_steps, LR_DECAY_FACTOR,  staircase=True)
         #tf.scalar_summary('learning_rate', lr)
-        opt = tf.train.AdamOptimizer(lr)
-        #opt = tf.train.GradientDescentOptimizer(lr)
-        #opt = tf.train.GradientDescentOptimizer(0.001)
-        train_op = opt.minimize(cross_entropy, global_step=global_step)
+        opt = tf.train.AdamOptimizer(0.001)
+        #opt = tf.train.GradientDescentOptimizer(0.5)
+        train_op = opt.minimize(loss, global_step=global_step)
         
-        
-    
-        correct_prediction = tf.equal(tf.argmax(output,1), tf.argmax(net_y,1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+        #correct_prediction = tf.equal(tf.argmax(output,1), tf.argmax(net_y,1))
+        #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
         #train_op = opt.apply_gradients(opt.compute_gradients(total_loss), global_step=global_step)
 
@@ -267,34 +282,20 @@ def main():
         #summary_writer = tf.train.SummaryWriter('.', graph_def=sess.graph_def)
                 
         #saver.restore(sess, 'model_bunny_5_10.ckpt')   # Load previously trained weights
-                
-        
+                        
         for epoch in range(nr_epochs):
                 print "Starting epoch ", epoch
                 for batch in range(batches_per_epoch):
-                    oldX=X
-                    oldY=Y
                     X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations, num_channels=num_channels, d2=d2)
                 
                     start_time = time.time()
-                    #res, absy_, logy_, mult_,err = sess.run([output,absy, logy, mult, cross_entropy], feed_dict={net_x:X, net_y: Y})
-                    #_, error,summary = sess.run([train_op, cross_entropy, summary_op], feed_dict={net_x:X, net_y: Y})
-                    _, error = sess.run([train_op, cross_entropy], feed_dict={net_x:X, net_y: Y})
+                    _, error = sess.run([train_op, loss], feed_dict={net_x:X, net_y: Y})
                     duration = time.time() - start_time
                     print "Batch:", batch ,"  Loss: ", error, "   Duration (sec): ", duration
 
-                    #summary_writer.add_summary(summary, batch)
-                    
-                    #Xv, Yv = reader.next_batch_val(BATCH_SIZE)
-                    #acc = sess.run(accuracy, feed_dict={net_x:Xv, net_y: Yv})
-                    #print "Batch:", batch ,"  Loss: ", error, " Test accuracy: ", acc, "   Duration (sec): ", duration
-                    # Save the model checkpoint periodically.
                     if batch % 100 == 0:
                         save_path = saver.save(sess, "model_bunny_5_10.ckpt")
                         print "Model saved in file: ",save_path
-
-
-
 
     print 'done'
 if __name__ == "__main__":
