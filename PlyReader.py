@@ -5,6 +5,10 @@ from scipy import spatial
 #import os.path
 from sampling import Sampler
 import utils
+import plotutils
+from mayavi import mlab
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class PlyReader:
@@ -27,13 +31,15 @@ class PlyReader:
 
 
     def read_ply(self, file_name, num_samples=1000, sample_class_start=0):
-        ply = PlyData.read(file_name)
-        vertex = ply['vertex']
-        (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
-        points = zip(x.ravel(), y.ravel(), z.ravel())
+        #ply = PlyData.read(file_name)
+        #vertex = ply['vertex']
+        #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
+        #points = zip(x.ravel(), y.ravel(), z.ravel())
+        #np.save('points', points)
+        points = np.load('points.npy')
         self.data = np.asarray(points)
 #TODO: better sampling
-        self.samples = Sampler.sample(self.data, -1, num_samples)
+        self.samples = Sampler.sample(self.data, -1, num_samples-1)
         self.tree = spatial.KDTree(self.data) 
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start
@@ -41,9 +47,9 @@ class PlyReader:
         return self.data
     
     
-    def set_variables(self, l, num_rotations=20, patch_dim=24, use_normals_pc=True, use_point_as_mean=False, flip_view_point=False, sigma=0.7071): 
+    def set_variables(self, l, patch_dim=24, use_normals_pc=True, use_point_as_mean=False, flip_view_point=False, sigma=0.7071): 
         self.l = l
-        self.num_rotations=num_rotations
+        #self.num_rotations=num_rotations
         self.patch_dim=patch_dim
         self.use_normals_pc=use_normals_pc
         self.use_point_as_mean=use_point_as_mean
@@ -110,7 +116,7 @@ class PlyReader:
             local_pose = utils.align_vectors(mu, nr, origin, z_axis)
             ref_points = utils.transform_pc(local_points, pose=local_pose)
 
-            for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/self.num_rotations)):
+            for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
                 if aug_num == num_rotations:
                     break
                 rot2d = utils.angle_axis_to_rotation(theta, z_axis)
@@ -127,6 +133,7 @@ class PlyReader:
                         #patch[x, y, z] = 1
                         #X[point_number*num_rotations + aug_num, x + self.patch_dim * (y + self.patch_dim * z)] = 1
                         X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
+
                 #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
                 Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
@@ -181,39 +188,52 @@ class PlyReader:
             local_pose = utils.align_vectors(mu, nr, origin, z_axis)
             ref_points = utils.transform_pc(local_points, pose=local_pose)
 
-            for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/self.num_rotations)):
+            for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
                 if aug_num == num_rotations:
                     break
                 rot2d = utils.angle_axis_to_rotation(theta, z_axis)
                 rot_points = utils.transform_pc(ref_points, rot2d)
+                #plotutils.show_pc(rot_points)
+                #plotutils.draw_normal(origin, z_axis)
+                #mlab.show()
                 #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
                 if num_channels == 3:
                     for rot_pt in rot_points:
                         #project on z
-                        x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
-                        y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
+                        x = int(((rot_pt[0] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+                        y = int(((rot_pt[1] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+                        #x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
+                        #y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
                         if (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                             X[point_number*num_rotations + aug_num, x, y, 2] = 1 # rot_pt[2]
                         
                         #project on y
-                        x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
-                        z = int(self.patch_dim*(rot_pt[2] / self.l) + self.patch_dim / 2)
+                        #x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
+                        #z = int(self.patch_dim*(rot_pt[2] / self.l) + self.patch_dim / 2)
+                        x = int(((rot_pt[0] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+                        z = int(((rot_pt[2] + self.l) / (2 * self.l))*(self.patch_dim - 1))
                         if (z >= 0) and (z < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                             X[point_number*num_rotations + aug_num, z, x, 1] = 1 #rot_pt[1]
                         
                         #project on x
-                        y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
-                        z = int(self.patch_dim*(rot_pt[2] / self.l) + self.patch_dim / 2)
+                        #y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
+                        #z = int(self.patch_dim*(rot_pt[2] / self.l) + self.patch_dim / 2)
+                        y = int(((rot_pt[1] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+                        z = int(((rot_pt[2] + self.l) / (2 * self.l))*(self.patch_dim - 1))
                         if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim):
                             X[point_number*num_rotations + aug_num, z, y, 0] = 1 #rot_pt[0]
                 else:
                     for rot_pt in rot_points:
                         #project on z
-                        x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
-                        y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
+                        #x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
+                        #y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
+                        x = int(((rot_pt[0] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+                        y = int(((rot_pt[1] + self.l) / (2 * self.l))*(self.patch_dim - 1))
                         if (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
-                            X[point_number*num_rotations + aug_num, x, y, 0] = 1 # rot_pt[2]
-                    
+                            X[point_number*num_rotations + aug_num, x, y, 0] = rot_pt[2]
+                    #plt.imshow(X[point_number*num_rotations + aug_num].reshape([self.patch_dim, self.patch_dim,]), cmap = 'gray', interpolation = 'bicubic')
+                    #plt.title('label: ' + str(self.sample_class_current % num_classes))
+                    #plt.show()
                 Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
             self.sample_class_current += 1

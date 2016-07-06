@@ -66,8 +66,11 @@ def normalize(v):
     return v
 
 
-def angle_axis_to_rotation(c, axis):
+def angle_axis_to_rotation_old(angle, axis):
+    c = np.cos(angle)
     s = LA.norm(axis)
+    
+    axis = normalize(axis)
     
     vx = np.zeros((3, 3))
     vx[0, 1] = -axis[2]
@@ -81,11 +84,39 @@ def angle_axis_to_rotation(c, axis):
     return  rotation
 
 
+
+def angle_axis_to_rotation(angle, axis):
+    c = np.cos(angle)
+    s = np.sin(angle)
+    t = 1 - c
+    axis1 = normalize(axis)
+    
+    m = np.zeros((3,3))
+    m[0, 0] = c + axis1[0]*axis1[0]*t;
+    m[1, 1] = c + axis1[1]*axis1[1]*t;
+    m[2, 2] = c + axis1[2]*axis1[2]*t;
+
+
+    tmp1 = axis1[0]*axis1[1]*t;
+    tmp2 = axis1[2]*s;
+    m[1, 0] = tmp1 + tmp2;
+    m[0, 1] = tmp1 - tmp2;
+    tmp1 = axis1[0]*axis1[2]*t;
+    tmp2 = axis1[1]*s;
+    m[2, 0] = tmp1 - tmp2;
+    m[0, 2] = tmp1 + tmp2;    tmp1 = axis1[1]*axis1[2]*t;
+    tmp2 = axis1[0]*s;
+    m[2, 1] = tmp1 + tmp2;
+    m[1, 2] = tmp1 - tmp2;
+    
+    return  m
+
+
 def  align_vectors(p1, n1, p2, n2):
     axis = np.cross(n1, n2)
     c = np.dot(n1, n2)
     axis = normalize(axis)
-    rotation = angle_axis_to_rotation(c, axis)
+    rotation = angle_axis_to_rotation(np.arccos(c), axis)
     tr = np.zeros((3, 1))
     tr[0][0] = rotation[0, 0] * (-p1[0]) + rotation[0, 1] * (-p1[1]) + rotation[0, 2] * (-p1[2])
     tr[1][0] = rotation[1, 0] * (-p1[0]) + rotation[1, 1] * (-p1[1]) + rotation[1, 2] * (-p1[2])
