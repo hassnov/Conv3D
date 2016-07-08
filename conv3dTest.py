@@ -126,7 +126,7 @@ def build_graph_2d(data, keep_prob, num_classes):
     return tf.matmul(h_fc1_drop, W_fc2) + b_fc2, regularizers
 
 SEED = None
-#NUM_LABELS = 2
+NUM_LABELS = 2
 
 
 import os.path
@@ -136,7 +136,7 @@ def main():
     
     nr_epochs = 500
     
-    BATCH_SIZE = 20
+    BATCH_SIZE = 10
     num_rotations = 10
     patch_dim = 28
     relL = 0.07
@@ -147,7 +147,7 @@ def main():
     fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
-    reader.read_ply(fileName, num_samples=10)
+    reader.read_ply(fileName, num_samples=3)
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
@@ -159,11 +159,11 @@ def main():
     
     
     num_epochs = 10000
-    train_size = 100
+    train_size = 30
     train_data, train_labels = fake_data(train_size)
     
     train_data, train_labels = reader.next_batch(train_size // num_rotations, num_rotations=num_rotations, num_channels=1, d2 = True)
-    ii = numpy.random.permutation(train_labels.shape[0])
+    #ii = numpy.random.permutation(train_labels.shape[0])
     #train_data = train_data[ii]
     #train_labels = train_labels[ii]
     NUM_LABELS = reader.num_classes
@@ -187,9 +187,6 @@ def main():
         logits, regularizers = build_graph_2d(net_x, 0.5, NUM_LABELS)
         loss= tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                                                                              logits, net_y))
-        #regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
-         #         tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
-        
         loss += 5e-4 * regularizers
         print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()        
@@ -211,7 +208,7 @@ def main():
         
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         

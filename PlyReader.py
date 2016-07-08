@@ -5,10 +5,10 @@ from scipy import spatial
 #import os.path
 from sampling import Sampler
 import utils
-import plotutils
-from mayavi import mlab
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+#import plotutils
+#from mayavi import mlab
+#import matplotlib.pyplot as plt
+#from mpl_toolkits.mplot3d import Axes3D
 
 
 class PlyReader:
