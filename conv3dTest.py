@@ -162,11 +162,11 @@ def main():
     train_size = 30
     train_data, train_labels = fake_data(train_size)
     
-    train_data, train_labels = reader.next_batch(train_size // num_rotations, num_rotations=num_rotations, num_channels=1, d2 = True)
+    #train_data, train_labels = reader.next_batch(train_size // num_rotations, num_rotations=num_rotations, num_channels=1, d2 = True)
     #ii = numpy.random.permutation(train_labels.shape[0])
     #train_data = train_data[ii]
     #train_labels = train_labels[ii]
-    NUM_LABELS = reader.num_classes
+    #NUM_LABELS = reader.num_classes
     print 'NUM_LABELS: ', NUM_LABELS
     offset = 0
     X = train_data[offset:(offset + BATCH_SIZE), ...]
