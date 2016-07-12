@@ -16,14 +16,11 @@ def activation_summary(x):
 def xavier_conv_init(shape):
     return tf.random_normal(shape, stddev=math.sqrt(1.0/(shape[0]*shape[1]* shape[2])))
 
-
 def xavier_conv3_init(shape):
     return tf.random_normal(shape, stddev=math.sqrt(1.0/(shape[0]*shape[1]* shape[2]*shape[3])))
 
-
 def xavier_fc_init(shape):
     return tf.random_normal(shape, stddev=math.sqrt(1.0/shape[0]))
-
 
 def conv2d_layer(name, input_data, shape, wd=0.1):
     with tf.variable_scope(name):
@@ -37,7 +34,6 @@ def conv2d_layer(name, input_data, shape, wd=0.1):
         layer = tf.nn.relu(bias, name=name)
     #activation_summary(layer)
     return layer
-
 
 def conv3d_layer(name, input_data, shape, wd=0.1):
     with tf.variable_scope(name):
@@ -58,13 +54,10 @@ def conv3d_layer(name, input_data, shape, wd=0.1):
 def conv3d(x, W):
     return tf.nn.conv3d(x, W, strides=[1, 1, 1, 1, 1], padding='SAME')
 
-
 def max_pool_2x2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 2, 1],
                         strides=[1, 2, 2, 2, 1], padding='SAME')
-
-
- 
+  
 def fc_layer(name, input_data, shape, wd=0.1):
     with tf.variable_scope(name):
         weights = tf.Variable(xavier_fc_init(shape), name='weights')
@@ -77,15 +70,13 @@ def fc_layer(name, input_data, shape, wd=0.1):
     #activation_summary(layer)
     return layer
 
-
-def weight_variable(shape, name='weight'):
+def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial, name=name)
+    return tf.Variable(initial)
 
-
-def bias_variable(shape, name='bias'):
+def bias_variable(shape):
     initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial, name=name)
+    return tf.Variable(initial)
 
 
 def build_graph_3d(data, keep_prob, num_classes, train=True):
