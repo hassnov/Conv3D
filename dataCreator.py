@@ -10,8 +10,8 @@ def create_reader():
     
     
     
-    num_samples = 2
-    patch_dim = 14
+    num_samples = 20
+    patch_dim = 32
     #relSampling = 0.05
     #relRadius = 0.1
     #radius = pc_diameter*relRadius
@@ -35,7 +35,7 @@ def create_reader():
 def create_data():
     
     num_rotations = 20
-    BATCH_SIZE = 10
+    BATCH_SIZE = 4
     reader = create_reader()
     ratio = 0.8
     epsilon = 0.00001
@@ -53,19 +53,19 @@ def create_data():
     print 'test_labels shape: ', test_labels.shape
     start_time = time.time()
     
-    for i in range(samples_count // num_rotations):
+    for i in range(samples_count // num_rotations // BATCH_SIZE):
         X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
-        ii = np.random.permutation(Y.shape[0])
-        X = X[ii]
-        Y = Y[ii]
+        #ii = np.random.permutation(Y.shape[0])
+        #X = X[ii]
+        #Y = Y[ii]
         """train_data =    np.vstack((X[0:int(X.shape[0]*0.8), ...], train_data))
         train_labels =  np.vstack((Y[0:int(X.shape[0]*0.8), ...], train_labels))
         test_data =     np.vstack((X[int(X.shape[0]*0.8): , ...], test_data)) 
         test_labels =   np.vstack((Y[int(X.shape[0]*0.8): , ...], test_labels))"""
-        np.save('train_data_' + str(i), X[0:int(X.shape[0]*0.8), ...])
-        np.save('train_label_' + str(i), Y[0:int(X.shape[0]*0.8), ...])
-        np.save('test_data_' + str(i), X[int(X.shape[0]*0.8):, ...])
-        np.save('test_label_' + str(i), Y[int(X.shape[0]*0.8):, ...])
+        np.save('data/train_data_' + str(i), X[0:int(X.shape[0]*0.8), ...])
+        np.save('data/train_label_' + str(i), Y[0:int(X.shape[0]*0.8), ...])
+        np.save('data/test_data_' + str(i), X[int(X.shape[0]*0.8):, ...])
+        np.save('data/test_label_' + str(i), Y[int(X.shape[0]*0.8):, ...])
     
     """ tr_data = np.asarray(train_data)
     tr_lables = np.asarray(train_labels)
