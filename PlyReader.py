@@ -2,9 +2,10 @@ import numpy as np
 from numpy import linalg as LA
 from plyfile import PlyData
 from scipy import spatial
-#import os.path
+import os.path
 from sampling import Sampler
 import utils
+import time
 #import plotutils
 #from mayavi import mlab
 #import matplotlib.pyplot as plt
@@ -238,6 +239,4 @@ class PlyReader:
                 #patches.append(patch)
             self.sample_class_current += 1
         return X, Y
-    
-
     

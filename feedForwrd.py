@@ -1,51 +1,25 @@
 #!/usr/bin/env python
 
 import time
-import math
-import numpy
 import tensorflow as tf
-import PlyReader
-import utils
 import os.path
 import convnnutils
+import dataCreator
 
 def main():
-    
-    d2 = False
-    num_channels = 1
-    
-    INIT_RATE = 0.00001
-    LR_DECAY_FACTOR = 0.1
-    
+        
     nr_epochs = 500
-    
-    num_rotations = 10
-    patch_dim = 14
-    #relSampling = 0.05
-    #relRadius = 0.1
-    #radius = pc_diameter*relRadius
-    relL = 0.07
-    
-    BATCH_SIZE = 1
-    
     dir1 = os.path.dirname(os.path.realpath(__file__))
     
-    fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
-    reader = PlyReader.PlyReader()
-    start_time = time.time()
-    reader.read_ply(fileName, num_samples=3)
-    print 'reading time: ', time.time() - start_time
-    pc_diameter = utils.get_pc_diameter(reader.data)
-    l = relL*pc_diameter
-    reader.set_variables(l=l, patch_dim=patch_dim)
+    num_rotations = 5
+    BATCH_SIZE = 2
+    reader = dataCreator.create_reader()
     samples_count = reader.compute_total_samples(num_rotations)
     batches_per_epoch = samples_count/BATCH_SIZE
     print "Batches per epoch:", batches_per_epoch
-    
 
-    
     start_time = time.time()
-    X,Y = reader.next_batch(BATCH_SIZE, num_rotations=num_rotations, num_channels=num_channels, d2=d2)
+    X,Y = reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
 
     print 'batch time: ', time.time() - start_time
     
@@ -56,7 +30,10 @@ def main():
         net_x = tf.placeholder("float", X.shape, name="in_x")
         net_y = tf.placeholder(tf.int64, Y.shape, name="in_y")
         
-        logits, _ = convnnutils.build_graph_3_3_512(net_x, 0.5, reader.num_classes, train=False)
+        logits, regularizers = convnnutils.build_graph_3_3_512(net_x, 0.5, reader.num_classes, train=False)
+        
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
+        loss += 5e-4 * regularizers
         
         print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()
@@ -76,19 +53,27 @@ def main():
         saver = tf.train.Saver(tf.all_variables())
         #summary_op = tf.merge_all_summaries()
         #summary_writer = tf.train.SummaryWriter('.', graph_def=sess.graph_def)
-                
-        saver.restore(sess, 'model_bunny_2_5_2.ckpt')   # Load previously trained weights
-                        
+        ckpt = tf.train.get_checkpoint_state(dir1)
+        if ckpt and ckpt.model_checkpoint_path:
+            saver.restore(sess, ckpt.model_checkpoint_path)   # Load previously trained weights
+            print 'model restored: ' + ckpt.model_checkpoint_path
+        else:
+            print 'no model to restore'
+        
+        print [v.name for v in tf.all_variables()]
+              
         for epoch in range(nr_epochs):
                 print "Starting epoch ", epoch
                 for batch in range(batches_per_epoch):
-                    X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations, num_channels=num_channels, d2=d2)
+                    X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
                 
                     start_time = time.time()
-                    acc = sess.run(accuracy, feed_dict={net_x:X, net_y: Y})
+                    error, acc = sess.run([loss, accuracy], feed_dict={net_x:X, net_y: Y})
                     duration = time.time() - start_time
-                    print "Batch:", batch, "    Accuracy: ", acc, "   Duration (sec): ", duration
+                    print "Batch:", batch, "    loss: ", error, "    Accuracy: ", acc #, "   Duration (sec): ", duration
 
     print 'done'
 if __name__ == "__main__":
     main()
+    
+    

@@ -77,14 +77,14 @@ def fc_layer(name, input_data, shape, wd=0.1):
     return layer
 
 
-def weight_variable(shape):
+def weight_variable(shape, name='weight'):
     initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial)
+    return tf.Variable(initial, name=name)
 
 
-def bias_variable(shape):
+def bias_variable(shape, name='bias'):
     initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial)
+    return tf.Variable(initial, name=name)
 
 
 def build_graph(data, keep_prob, num_classes, d2=False):
@@ -147,8 +147,8 @@ def build_graph_3_3_512(data, keep_prob, num_classes, train=True):
     fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4];   # Resolve input dim into fc0 from conv3-filters
     
     #fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
-    W_fc0 = weight_variable([fc0_inputdim, 512])
-    b_fc0 = bias_variable([512])
+    W_fc0 = weight_variable([fc0_inputdim, 512],  name='fc0/weights')
+    b_fc0 = bias_variable([512], name='fc0/bias')
     h_pool2_flat = tf.reshape(pool1, [-1, fc0_inputdim])
     h_fc0 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc0) + b_fc0)
     if train:
@@ -156,8 +156,8 @@ def build_graph_3_3_512(data, keep_prob, num_classes, train=True):
     
     
     #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
-    W_fc1 = weight_variable([512, num_classes])
-    b_fc1 = bias_variable([num_classes])
+    W_fc1 = weight_variable([512, num_classes], name='fc1/weights')
+    b_fc1 = bias_variable([num_classes], name='fc0/bias')
     
     regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
                     tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1))
