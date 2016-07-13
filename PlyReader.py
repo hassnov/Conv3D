@@ -31,14 +31,17 @@ class PlyReader:
 
 
 
-    def read_ply(self, file_name, num_samples=1000, sample_class_start=0):
+    def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False):
         #ply = PlyData.read(file_name)
         #vertex = ply['vertex']
         #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
         #points = zip(x.ravel(), y.ravel(), z.ravel())
         #np.save('points', points)
         points = np.load('points.npy')
-        self.data = np.asarray(points)
+        if add_noise:
+            self.data = utils.add_noise(points, 0.3)
+        else:
+            self.data = np.asarray(points)
 #TODO: better sampling
         self.samples = Sampler.sample(self.data, -1, num_samples-1)
         self.tree = spatial.KDTree(self.data) 

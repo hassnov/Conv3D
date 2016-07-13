@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import linalg as LA
 from plyfile import PlyData
+import random
 #from scipy import spatial
 
 
@@ -154,4 +155,24 @@ def my_range(start, end, step):
     while start <= end:
         yield start
         start += step
-        
+  
+  
+def add_noise(pc, prob=0.3):
+    pc1 = np.zeros(pc.shape)
+    pp = random.Random()
+    for i, point in enumerate(pc):
+        if pp.random() < prob:
+            pc1[i] = add_noise_point(point)
+        else:
+            pc1[i] = point
+    return pc1
+
+
+def add_noise_point(pt):
+    pt1 = np.zeros(pt.shape)
+    pt1[0] = pt[0] + pt[0]*random.Random().random()*0.03
+    pt1[1] = pt[1] + pt[1]*random.Random().random()*0.03
+    pt1[2] = pt[2] + pt[2]*random.Random().random()*0.03
+    return  pt1
+
+      
