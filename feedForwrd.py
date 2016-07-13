@@ -15,15 +15,15 @@ def main():
     num_rotations = 20
     BATCH_SIZE = 4
     reader = dataCreator.create_reader()
-    #samples_count = reader.compute_total_samples(num_rotations)
-    #batches_per_epoch = samples_count/BATCH_SIZE
-    #print "Batches per epoch:", batches_per_epoch
-    batches_per_epoch = 25
-
+    samples_count = reader.compute_total_samples(num_rotations)
+    batches_per_epoch = samples_count/BATCH_SIZE
+    print "Batches per epoch:", batches_per_epoch
+    #batches_per_epoch = 25
+    #return 0
     start_time = time.time()
-    #X,Y = reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
-    X = numpy.load('data/train_data_' + str(0) +'.npy')
-    Y = numpy.load('data/train_label_' + str(0) +'.npy')
+    X,Y = reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
+    #X = numpy.load('data/train_data_' + str(0) +'.npy')
+    #Y = numpy.load('data/train_label_' + str(0) +'.npy')
     print 'batch time: ', time.time() - start_time
     
     
@@ -48,7 +48,7 @@ def main():
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.35)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
@@ -66,25 +66,29 @@ def main():
         print [v.name for v in tf.all_variables()]
         b = 0
 
-        
+        accs = []
         for epoch in range(nr_epochs):
                 print "Starting epoch ", epoch
                 for batch in range(batches_per_epoch):
-                    #X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
+                    X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
+                    #print 'Xshape: ' , X.shape, '	Yshape: ', Y.shape, '	net_x: ', net_x.get_shape().as_list()
+                    """
                     #X = numpy.load('data/test_data_' + str(b) +'.npy')
                     #Y = numpy.load('data/test_label_' + str(b) +'.npy')
-                    X = numpy.load('data/test_data_' + str(b) +'.npy')
-                    Y = numpy.load('data/test_label_' + str(b) +'.npy')
                     for bb in range(3):
                         XX = numpy.load('data/test_data_' + str((1 + b + bb) % 5) +'.npy')
                         YY = numpy.load('data/test_label_' + str((1 + b + bb) % 5) +'.npy')
                         Y = numpy.hstack((YY, Y))
                         X = numpy.vstack((XX, X))
-                    b = (b + 1) % 5
+                    b = (b + 1) % 5"""
                     start_time = time.time()
                     error, acc = sess.run([loss, accuracy], feed_dict={net_x:X, net_y: Y})
                     duration = time.time() - start_time
                     print "Batch:", batch, "	loss:	", error, "	Accuracy: ", acc #, "   Duration (sec): ", duration
+                    accs.append(acc)
+                    if batch % 20 == 0:
+                        print 'mean acc: ', numpy.mean(accs)
+                        #acc = []
 
     print 'done'
 if __name__ == "__main__":

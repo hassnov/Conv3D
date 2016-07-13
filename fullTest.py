@@ -19,22 +19,22 @@ def main():
     nr_epochs = 500
     dir1 = os.path.dirname(os.path.realpath(__file__))
     
-    #num_rotations = 10
-    #BATCH_SIZE = 10
-    print 'creating data..'
+    num_rotations = 20
+    BATCH_SIZE = 4
+    #print 'creating data..'
     #dataCreator.create_data()
     #return 0
     reader = dataCreator.create_reader()
-    #samples_count = reader.compute_total_samples(num_rotations)
-    #batches_per_epoch = samples_count/BATCH_SIZE
-    #print "Batches per epoch:", batches_per_epoch
-    batches_per_epoch = 100
+    samples_count = reader.compute_total_samples(num_rotations)
+    batches_per_epoch = samples_count/BATCH_SIZE
+    print "Batches per epoch:", batches_per_epoch
+    #batches_per_epoch = 100
 
     
     start_time = time.time()
-    #X,Y = reader.next_batch(BATCH_SIZE, num_rotations=num_rotations, num_channels=1)
-    X = numpy.load('data/train_data_' + str(0) +'.npy')
-    Y = numpy.load('data/train_label_' + str(0) +'.npy')
+    X,Y = reader.next_batch(BATCH_SIZE, num_rotations=num_rotations, num_channels=1)
+    #X = numpy.load('data/train_data_' + str(0) +'.npy')
+    #Y = numpy.load('data/train_label_' + str(0) +'.npy')
     print 'batch time: ', time.time() - start_time
     
     
@@ -57,7 +57,7 @@ def main():
         
         decay_steps = int(batches_per_epoch)
         lr = tf.train.exponential_decay(INIT_RATE, global_step, decay_steps, LR_DECAY_FACTOR,  staircase=True)
-        opt = tf.train.AdamOptimizer(0.001)
+        opt = tf.train.AdamOptimizer(0.0001)
         #opt = tf.train.GradientDescentOptimizer(0.5)
         train_op = opt.minimize(loss, global_step=global_step)
         
@@ -66,20 +66,21 @@ def main():
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
         # Create a saver and a summary op based on the tf-collection
-        saver = tf.train.Saver(tf.all_variables())
+        saver = tf.train.Saver(tf.all_variables(), max_to_keep=1)
         
-        ckpt = tf.train.get_checkpoint_state(dir1)
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)   # Load previously trained weights
-            print 'model restored: ' + ckpt.model_checkpoint_path
-        else:
-            print 'no model to restore'
+        #ckpt = tf.train.get_checkpoint_state(dir1)
+        #if ckpt and ckpt.model_checkpoint_path:
+        #    saver.restore(sess, ckpt.model_checkpoint_path)   # Load previously trained weights
+        #    print 'model restored: ' + ckpt.model_checkpoint_path
+        #else:
+        #    print 'no model to restore'
         
+        saver.restore(sess, "bunny_4_20_1000.ckpt")   # Load previously trained weights
         print [v.name for v in tf.all_variables()]
         
         #saver.restore(sess, 'model_bunny_5_10.ckpt')   # Load previously trained weights
@@ -88,17 +89,17 @@ def main():
         #for epoch in range(1):
                 print "Starting epoch ", epoch
                 for batch in range(batches_per_epoch):
-                    #X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
-                    X = numpy.load('data/train_data_' + str(b) +'.npy')
-                    Y = numpy.load('data/train_label_' + str(b) +'.npy')
-                    b = (b + 1) % 5
+                    X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
+                    #X = numpy.load('data/train_data_' + str(b) +'.npy')
+                    #Y = numpy.load('data/train_label_' + str(b) +'.npy')
+                    #b = (b + 1) % 5
                     start_time = time.time()
                     _, error, acc, gstep = sess.run([train_op, loss, accuracy, global_step], feed_dict={net_x:X, net_y: Y})
                     duration = time.time() - start_time
                     print "Batch:", batch ,"	Loss: ", error, "	Accuracy: ", acc, "	global step: ", gstep#, "   Duration (sec): ", duration
 
                     if batch % 100 == 0:
-                        save_path = saver.save(sess, "bunny_10_5_1000.ckpt", global_step=global_step)
+                        save_path = saver.save(sess, "bunny_4_20_1000.ckpt")
                         print "Model saved in file: ",save_path
         
         print 'start testing.....'
