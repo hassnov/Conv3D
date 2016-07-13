@@ -79,7 +79,7 @@ class PlyReader:
         else:
             pc_samples = self.samples[self.index:self.samples.shape[0]]
             self.index = self.index + batch_size -self.samples.shape[0]
-            self.sample_class_current = self.sample_class_start
+            #self.sample_class_current = self.sample_class_start
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
 
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
@@ -138,6 +138,7 @@ class PlyReader:
                 #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
                 Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
+            #TODO: start from start not 0 with sample_class_current
             self.sample_class_current += 1
         return X, Y
 
