@@ -10,19 +10,19 @@ def create_reader():
     
     
     
-    num_samples = 20
-    patch_dim = 32
+    num_samples = 5
+    patch_dim = 8
     #relSampling = 0.05
     #relRadius = 0.1
     #radius = pc_diameter*relRadius
     relL = 0.07
     
     dir1 = os.path.dirname(os.path.realpath(__file__))
-        
+    
     fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
-    reader.read_ply(fileName, num_samples=num_samples)
+    reader.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=0.2, noise_factor=0.02)
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
@@ -53,7 +53,8 @@ def create_data():
     print 'test_labels shape: ', test_labels.shape
     start_time = time.time()
     
-    for i in range(samples_count // num_rotations // BATCH_SIZE):
+    #for i in range(samples_count // num_rotations // BATCH_SIZE):
+    for i in range(samples_count // num_rotations):
         X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
         #ii = np.random.permutation(Y.shape[0])
         #X = X[ii]
@@ -62,10 +63,10 @@ def create_data():
         train_labels =  np.vstack((Y[0:int(X.shape[0]*0.8), ...], train_labels))
         test_data =     np.vstack((X[int(X.shape[0]*0.8): , ...], test_data)) 
         test_labels =   np.vstack((Y[int(X.shape[0]*0.8): , ...], test_labels))"""
-        np.save('data/train_data_' + str(i), X[0:int(X.shape[0]*0.8), ...])
-        np.save('data/train_label_' + str(i), Y[0:int(X.shape[0]*0.8), ...])
-        np.save('data/test_data_' + str(i), X[int(X.shape[0]*0.8):, ...])
-        np.save('data/test_label_' + str(i), Y[int(X.shape[0]*0.8):, ...])
+        #np.save('data/train_data_' + str(i), X[0:int(X.shape[0]*0.8), ...])
+        #np.save('data/train_label_' + str(i), Y[0:int(X.shape[0]*0.8), ...])
+        #np.save('data/test_data_' + str(i), X[int(X.shape[0]*0.8):, ...])
+        #np.save('data/test_label_' + str(i), Y[int(X.shape[0]*0.8):, ...])
     
     """ tr_data = np.asarray(train_data)
     tr_lables = np.asarray(train_labels)
