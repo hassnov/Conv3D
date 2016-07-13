@@ -1,0 +1,15 @@
+checkpoint
+.project
+.pydevproject
+PlyReader.pyc
+PlyReader.py~
+convNN.pyc
+convnnutils.pyc
+convolutionalMNIST.py
+dataCreator.pyc
+patchTest.py
+plots/
+plotutils.pyc
+sampling.pyc
+utils.pyc
+bunny_*
