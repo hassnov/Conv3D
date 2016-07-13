@@ -31,7 +31,7 @@ class PlyReader:
 
 
 
-    def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False):
+    def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False, noise_prob=0.3, noise_factor=0.02):
         #ply = PlyData.read(file_name)
         #vertex = ply['vertex']
         #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))

@@ -157,22 +157,22 @@ def my_range(start, end, step):
         start += step
   
   
-def add_noise(pc, prob=0.3):
+def add_noise(pc, prob=0.3, factor=0.02):
     pc1 = np.zeros(pc.shape)
     pp = random.Random()
     for i, point in enumerate(pc):
         if pp.random() < prob:
-            pc1[i] = add_noise_point(point)
+            pc1[i] = add_noise_point(point, factor=factor)
         else:
             pc1[i] = point
     return pc1
 
 
-def add_noise_point(pt):
+def add_noise_point(pt, factor=0.02):
     pt1 = np.zeros(pt.shape)
-    pt1[0] = pt[0] + pt[0]*random.Random().random()*0.03
-    pt1[1] = pt[1] + pt[1]*random.Random().random()*0.03
-    pt1[2] = pt[2] + pt[2]*random.Random().random()*0.03
+    pt1[0] = pt[0] + pt[0]*random.Random().random()*factor
+    pt1[1] = pt[1] + pt[1]*random.Random().random()*factor
+    pt1[2] = pt[2] + pt[2]*random.Random().random()*factor
     return  pt1
 
       
