@@ -138,6 +138,7 @@ class PlyReader:
                 #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
                 Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
+            #TODO: start from start not 0 with sample_class_current
             self.sample_class_current += 1
         return X, Y
 
