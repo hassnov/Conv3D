@@ -42,8 +42,8 @@ class PlyReader:
             self.data = utils.add_noise(points, prob=noise_prob, factor=noise_factor)
         else:
             self.data = np.asarray(points)
-        plotutils.show_pc(self.data)
-        mlab.show()
+        #plotutils.show_pc(self.data)
+        #mlab.show()
 #TODO: better sampling
         self.samples = Sampler.sample(self.data, -1, num_samples-1)
         self.tree = spatial.KDTree(self.data) 
@@ -245,4 +245,48 @@ class PlyReader:
                 #patches.append(patch)
             self.sample_class_current += 1
         return X, Y
-    
+
+
+    def patch_3d(self, point_in):
+        X = np.zeros((1, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
+        Y = np.zeros((1), np.int32)
+        r = self.l / np.sqrt(2)
+        i = self.tree.query_ball_point(point_in[0:3], r=r)
+        distances, indices = self.tree.query(point_in[0:3], k=len(i))
+        local_points = self.data[indices]
+        if len(i) <= 8:
+            return None
+        if self.use_point_as_mean:
+            mu = point_in[0:3]
+        else:
+            #TODO: compute real mean
+            mu = point_in[0:3]
+        if (self.use_normals_pc) and (point_in.shape == 6):
+            nr = point_in[3:6]
+            #TODO: get_weighted_normal
+        else:# calc normals
+            cov_mat = utils.build_cov(local_points, mean=mu)
+            w, v = LA.eigh(cov_mat)
+            min_id = np.argmin(w)
+            nr = np.transpose(v[:, min_id])
+            nr = utils.normalize(nr)
+            #nr = [-x for x in nr]
+# at this point the plane is defined by (mu, nr)
+# we transform the mean to be (0,0,0) and the normal to be  (0,0,1)
+# to obtain canonical frame
+        z_axis = np.array([0, 0, 1])
+        origin = np.zeros(3)
+        local_pose = utils.align_vectors(mu, nr, origin, z_axis)
+        ref_points = utils.transform_pc(local_points, pose=local_pose)
+
+        #theta = -np.pi
+        #rot2d = utils.angle_axis_to_rotation(theta, z_axis)
+        #rot_points = utils.transform_pc(ref_points, rot2d)
+        for ref_pt in ref_points:
+            x = int(((ref_pt[0] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+            y = int(((ref_pt[1] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+            z = int(((ref_pt[2] + self.l) / (2 * self.l))*(self.patch_dim - 1))
+            if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
+                X[0, x, y, z, 0] = 1
+        Y[0] = -1
+        return X, Y

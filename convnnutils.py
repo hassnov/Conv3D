@@ -129,7 +129,10 @@ def build_graph_3d(data, keep_prob, num_classes, train=True):
     regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
                     tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1) +
                     tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc2))
-    return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers
+    if train:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers 
+    else:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv1, pool1, h_fc0, h_fc1
 
 
 def build_graph_3_3_512(data, keep_prob, num_classes, train=True):
@@ -161,7 +164,10 @@ def build_graph_3_3_512(data, keep_prob, num_classes, train=True):
     
     regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
                     tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1))
-    return tf.matmul(h_fc0, W_fc1) + b_fc1, regularizers
+    if train:
+        return tf.matmul(h_fc0, W_fc1) + b_fc1, regularizers
+    else:
+        return tf.matmul(h_fc0, W_fc1) + b_fc1, regularizers, conv1, pool1, h_fc0
 
 
 def build_graph_2d(data, keep_prob, num_classes):
