@@ -170,9 +170,9 @@ def add_noise(pc, prob=0.3, factor=0.02):
 
 def add_noise_point(pt, factor=0.02):
     pt1 = np.zeros(pt.shape)
-    pt1[0] = pt[0] + pt[0]*random.Random().random()*factor
-    pt1[1] = pt[1] + pt[1]*random.Random().random()*factor
-    pt1[2] = pt[2] + pt[2]*random.Random().random()*factor
+    pt1[0] = pt[0] + pt[0]*(random.Random().random())*factor
+    pt1[1] = pt[1] + pt[1]*(random.Random().random())*factor
+    pt1[2] = pt[2] + pt[2]*(random.Random().random())*factor
     return  pt1
 
       

@@ -6,8 +6,8 @@ import os.path
 from sampling import Sampler
 import utils
 import time
-#import plotutils
-#from mayavi import mlab
+import plotutils
+from mayavi import mlab
 #import matplotlib.pyplot as plt
 #from mpl_toolkits.mplot3d import Axes3D
 
@@ -39,9 +39,11 @@ class PlyReader:
         #np.save('points', points)
         points = np.load('points.npy')
         if add_noise:
-            self.data = utils.add_noise(points, 0.3)
+            self.data = utils.add_noise(points, prob=noise_prob, factor=noise_factor)
         else:
             self.data = np.asarray(points)
+        plotutils.show_pc(self.data)
+        mlab.show()
 #TODO: better sampling
         self.samples = Sampler.sample(self.data, -1, num_samples-1)
         self.tree = spatial.KDTree(self.data) 
