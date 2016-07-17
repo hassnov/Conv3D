@@ -4,18 +4,22 @@ from plyfile import PlyData
 from scipy import spatial
 import os.path
 from sampling import Sampler
+from sampling import SampleAlgorithm
 import utils
 import time
+import logging
 import plotutils
 from mayavi import mlab
-#import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import enum
 
 
 class PlyReader:
     
     data = None
     samples = None
+    sample_indices = None
     num_classes = None
     index = 0
     l = None
@@ -31,7 +35,9 @@ class PlyReader:
 
 
 
-    def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False, noise_prob=0.3, noise_factor=0.02):
+    def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False,
+                  noise_prob=0.3, noise_factor=0.02, sampling_algorithm=SampleAlgorithm.Uniform):
+        
         #ply = PlyData.read(file_name)
         #vertex = ply['vertex']
         #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
@@ -45,11 +51,12 @@ class PlyReader:
         #plotutils.show_pc(self.data)
         #mlab.show()
 #TODO: better sampling
-        self.samples = Sampler.sample(self.data, -1, num_samples-1)
+        self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples-1, sampling_algorithm=sampling_algorithm)
         self.tree = spatial.KDTree(self.data) 
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start
         self.num_classes = self.samples.shape[0]
+        logging.basicConfig(filename='example.log',level=logging.DEBUG)
         return self.data
     
     
@@ -78,6 +85,7 @@ class PlyReader:
     def next_batch_3d(self, batch_size, num_rotations=20, num_classes=-1):
         if num_classes == -1:
             num_classes = self.num_classes
+        logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % num_classes) )
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
             self.index += batch_size
@@ -86,12 +94,11 @@ class PlyReader:
             self.index = self.index + batch_size -self.samples.shape[0]
             #self.sample_class_current = self.sample_class_start
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
-
+        
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
         Y = np.zeros((batch_size*  num_rotations), np.int32)
         
         r = self.l / np.sqrt(2)
-        
         for point_number, samplept in enumerate(pc_samples):
             i = self.tree.query_ball_point(samplept[0:3], r=r)
             distances, indices = self.tree.query(samplept[0:3], k=len(i))
@@ -144,10 +151,14 @@ class PlyReader:
                 Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
                 #patches.append(patch)
             #TODO: start from start not 0 with sample_class_current
+            #if self.sample_class_current % num_classes == 0:
+                #fig = plotutils.plot_patch_3D(X[point_number*num_rotations], name='patch label ' + str(self.sample_class_current % num_classes))
+                #fig.savefig('figures/fig' + str(self.sample_class_current) + '.png')
+                
             self.sample_class_current += 1
         return X, Y
 
-
+ 
     def next_batch_2d(self, batch_size, num_rotations=20, num_classes=-1, num_channels=3):
         if num_classes == -1:
             num_classes = self.num_classes

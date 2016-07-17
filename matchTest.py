@@ -12,6 +12,7 @@ import cv2
 from numpy import dtype
 from scipy import spatial
 import plotutils
+from sampling import SampleAlgorithm
 
 
     
@@ -23,7 +24,7 @@ def main():
     num_rotations=1
     BATCH_SIZE=5
     samples_per_batch = BATCH_SIZE * num_rotations
-    num_samples = 100
+    num_samples = 1000
     patch_dim = 32
     relL = 0.07
     dir1 = os.path.dirname(os.path.realpath(__file__))
@@ -31,13 +32,14 @@ def main():
     reader = PlyReader.PlyReader()
     reader_noise = PlyReader.PlyReader()
     
-    reader.read_ply(fileName, num_samples=num_samples, add_noise=False)
+    reader.read_ply(fileName, num_samples=num_samples, add_noise=False, sampling_algorithm=SampleAlgorithm.Random)
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
     reader.set_variables(l=l, patch_dim=patch_dim)
     
     reader_noise.read_ply(fileName, num_samples=num_samples, add_noise=True, noise_prob=0.2, noise_factor=0.02)
     reader_noise.set_variables(l=l, patch_dim=patch_dim)
+    reader_noise.samples = reader_noise.data[reader.sample_indices]
     
     samples_count = reader.compute_total_samples(num_rotations)
     batches_per_epoch = samples_count/BATCH_SIZE
@@ -57,7 +59,7 @@ def main():
         net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
         net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
         
-        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d(net_x, 0.5, reader.num_classes, train=False)
+        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d(net_x, 0.5, 100, train=False)
         
         #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         #loss += 5e-4 * regularizers
@@ -119,7 +121,7 @@ def main():
             duration = time.time() - start_time
             
             matches = utils.match_des(c1_1s[i:i1], c1_2s[i:i1])
-            plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches)
+            plotutils.show_matches(reader.data, reader_noise.data, reader.samples[i:i1], reader_noise.samples[i:i1], matches)
             
             #if b % 50 == 0:
             print "point:", b, "   Duration (sec): ", duration#, "    loss:    ", error, "    Accuracy: ", acc #, "   Duration (sec): ", duration
