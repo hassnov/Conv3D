@@ -3,8 +3,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from mayavi import mlab
 import numpy as np
 import utils
+import itertools
 
-def plot_patch_3D(patch):
+def plot_patch_3D(patch, name='Patch'):
     x = []
     y = []
     z = []
@@ -20,12 +21,12 @@ def plot_patch_3D(patch):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter3D(x, y, z)
-    plt.title('Patch')
+    plt.title(name)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     
-    return ax
+    return fig
 
 
 def show_pc(pc, points_in_pc=[], mode='point'):
@@ -36,6 +37,40 @@ def show_pc(pc, points_in_pc=[], mode='point'):
                       color=(0, 0, 0), colormap='Spectral', mode=mode, scale_factor=0.001)
         pts.glyph.glyph.clamping = False
     
+
+
+def show_matches(pc1, pc2, samples1, samples2, matches, tube_radius=0.0003, N=50):
+    axis = 2
+    pc1[:, axis] -= 0.1
+    samples1[:, axis] -= 0.1
+    pc2[:, axis] += 0.1
+    samples2[:, axis] += 0.1
+    show_pc(pc1, pc2)
+    assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
+    if matches.shape[0] > N:
+        samples11 = samples1[matches[0:50,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[0:50,1].astype(dtype=np.int16)]
+    else:
+        samples11 = samples1[matches[:,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[:,1].astype(dtype=np.int16)]
+    assert (samples11.shape == samples22.shape)
+    line = np.zeros((2, 3))
+    i = 0
+    correct = 0
+    wrong = 0
+    for sample1, sample2 in zip(samples11, samples22):
+        line[0] = sample1
+        line[1] = sample2
+        if matches[i,0] == matches[i, 1]:
+            mlab.plot3d(line[:, 0], line[:, 1], line[:, 2], color=(0, 1, 0), tube_radius=tube_radius)
+            correct += 1
+        else:
+            mlab.plot3d(line[:, 0], line[:, 1], line[:, 2], color=(1, 0, 0), tube_radius=tube_radius)
+            wrong += 1
+        i += 1
+    print 'correct: ', float(correct) / (correct + wrong), '    worng: ', float(wrong) / (correct + wrong)
+    mlab.show()
+    return -1
 
 def draw_normal(mu, nr, tube_radius=0.0003):
     nrr = np.array(utils.normalize(nr))

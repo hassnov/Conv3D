@@ -2,7 +2,7 @@ import numpy as np
 from numpy import linalg as LA
 from plyfile import PlyData
 import random
-#from scipy import spatial
+from scipy import spatial
 
 
 #from sampling import Sampler, SampleAlgorithm
@@ -174,5 +174,51 @@ def add_noise_point(pt, factor=0.02):
     pt1[1] = pt[1] + pt[1]*(random.Random().random())*factor
     pt1[2] = pt[2] + pt[2]*(random.Random().random())*factor
     return  pt1
+
+
+def stack_matches(indices, distances):
+    assert(len(indices) == len(distances))
+    ii = np.reshape( np.arange(0, len(indices)), [len(indices), 1])
+    ii_match = np.reshape(np.asarray(indices), [len(indices), 1])
+    dd = np.reshape(np.asarray(distances), [len(indices), 1])
+    
+    i_d = np.hstack((ii, ii_match, dd))
+    isort = np.argsort(dd[:, 0])
+    i_d = i_d[isort]
+    return i_d
+
+
+def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50):
+    assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
+    if matches.shape[0] > N:
+        samples11 = samples1[matches[0:50,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[0:50,1].astype(dtype=np.int16)]
+    else:
+        samples11 = samples1[matches[:,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[:,1].astype(dtype=np.int16)]
+    assert (samples11.shape == samples22.shape)
+    i = 0
+    correct = 0
+    wrong = 0
+    for i in range(samples11.shape[0]):
+        if matches[i,0] == matches[i, 1]:
+            correct += 1
+        else:
+            wrong += 1
+        i += 1
+    print 'correct: ', float(correct) / (correct + wrong), '    worng: ', float(wrong) / (correct + wrong)
+    return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
+
+def match_des(des1, des2):
+    tree = spatial.KDTree(des1)
+    ii = []
+    dd = []
+    for des in des2:
+        d, i = tree.query(des, k=1)
+        ii.append(i)
+        dd.append(d)
+    
+    matches = stack_matches(ii, dd)
+    return matches
 
       
