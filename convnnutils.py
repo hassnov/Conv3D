@@ -102,6 +102,9 @@ def build_graph_3d(data, keep_prob, num_classes, train=True):
     #pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
     
     conv1 = conv3d_layer("conv1", conv0, [3, 3, 3, 32, 32])
+    kk = conv1.get_shape().as_list()[1]
+    kk = kk / 4 
+    pool44 = tf.nn.max_pool3d(conv1, ksize=[1, kk, kk, kk, 1], strides=[1, kk, kk, kk, 1], padding='SAME', name='pool1')
     pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')   
     #conv2 = conv2d_layer("conv2",pool1,[12, 12, 32, 256])
     
@@ -132,7 +135,7 @@ def build_graph_3d(data, keep_prob, num_classes, train=True):
     if train:
         return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers 
     else:
-        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv1, pool1, h_fc0, h_fc1
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, pool44, pool1, h_fc0, h_fc1
 
 
 def build_graph_3_3_512(data, keep_prob, num_classes, train=True):
