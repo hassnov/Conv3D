@@ -33,7 +33,7 @@ def main():
         net_x = tf.placeholder("float", X.shape, name="in_x")
         net_y = tf.placeholder(tf.int64, Y.shape, name="in_y")
         
-        logits, regularizers = convnnutils.build_graph_3d(net_x, 0.5, reader.num_classes, train=False)
+        logits, regularizers,_,_,_,_ = convnnutils.build_graph_3d(net_x, 0.5, reader.num_classes, train=False)
         
         loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         loss += 5e-4 * regularizers
@@ -48,7 +48,7 @@ def main():
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.35)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
@@ -56,13 +56,14 @@ def main():
         saver = tf.train.Saver(tf.all_variables())
         #summary_op = tf.merge_all_summaries()
         #summary_writer = tf.train.SummaryWriter('.', graph_def=sess.graph_def)
-        ckpt = tf.train.get_checkpoint_state(dir1)
+        """ckpt = tf.train.get_checkpoint_state(dir1)
         if ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)   # Load previously trained weights
             print 'model restored: ' + ckpt.model_checkpoint_path
         else:
             print 'no model to restore'
-        
+        """
+        saver.restore(sess, 'bunny_4_10_100.ckpt')   # Load previously trained weights
         print [v.name for v in tf.all_variables()]
         b = 0
 
