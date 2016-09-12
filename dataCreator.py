@@ -10,8 +10,8 @@ def create_reader():
     
     
     
-    num_samples = 5
-    patch_dim = 8
+    num_samples = 100
+    patch_dim = 32
     #relSampling = 0.05
     #relRadius = 0.1
     #radius = pc_diameter*relRadius
@@ -22,7 +22,7 @@ def create_reader():
     fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
-    reader.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=0.2, noise_factor=0.02)
+    reader.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=0.3, noise_factor=0.01)
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
