@@ -3,7 +3,7 @@ from numpy import linalg as LA
 from plyfile import PlyData
 import random
 from scipy import spatial
-
+import time
 
 #from sampling import Sampler, SampleAlgorithm
 #import utils
@@ -84,7 +84,8 @@ def angle_axis_to_rotation_old(angle, axis):
     rotation = np.eye(3) + vx + ((1-c)/(s*s))*vx.dot(vx)
     return  rotation
 
-
+def rad(deg):
+    return (deg*np.pi) / 180
 
 def angle_axis_to_rotation(angle, axis):
     c = np.cos(angle)
@@ -157,7 +158,7 @@ def my_range(start, end, step):
         start += step
   
   
-def add_noise(pc, prob=0.3, factor=0.02):
+def add_noise_old(pc, prob=0.3, factor=0.02):
     pc1 = np.zeros(pc.shape)
     pp = random.Random()
     for i, point in enumerate(pc):
@@ -165,6 +166,13 @@ def add_noise(pc, prob=0.3, factor=0.02):
             pc1[i] = add_noise_point(point, factor=factor)
         else:
             pc1[i] = point
+    return pc1
+
+def add_noise(pc, prob=0.3, factor=0.02):
+    pc1 = pc #np.zeros(pc.shape)
+    ii = np.random.permutation(pc.shape[0])[0 : int(pc.shape[0]*prob)]
+    for i in ii:
+        pc1[i] = add_noise_point(pc[i], factor=factor)
     return pc1
 
 
@@ -176,9 +184,10 @@ def add_noise_point(pt, factor=0.02):
     return  pt1
 
 
-def stack_matches(indices, distances):
+def stack_matches(indices_orig, indices, distances):
     assert(len(indices) == len(distances))
-    ii = np.reshape( np.arange(0, len(indices)), [len(indices), 1])
+    #ii = np.reshape( np.arange(0, len(indices)), [len(indices), 1])
+    ii = np.reshape(np.asarray(indices_orig), [len(indices_orig), 1])
     ii_match = np.reshape(np.asarray(indices), [len(indices), 1])
     dd = np.reshape(np.asarray(distances), [len(indices), 1])
     
@@ -188,11 +197,15 @@ def stack_matches(indices, distances):
     return i_d
 
 
-def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50):
-    assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
+def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50, ignore_size=True):
+    if not ignore_size:
+        assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
+    assert(samples1.shape[0] == samples2.shape[0])
+    matchespart = matches
     if matches.shape[0] > N:
-        samples11 = samples1[matches[0:50,0].astype(dtype=np.int16)]
-        samples22 = samples2[matches[0:50,1].astype(dtype=np.int16)]
+        matchespart = matches[0:N,...]
+        samples11 = samples1[matches[0:N,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[0:N,1].astype(dtype=np.int16)]
     else:
         samples11 = samples1[matches[:,0].astype(dtype=np.int16)]
         samples22 = samples2[matches[:,1].astype(dtype=np.int16)]
@@ -200,8 +213,9 @@ def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50):
     i = 0
     correct = 0
     wrong = 0
-    for i in range(samples11.shape[0]):
-        if matches[i,0] == matches[i, 1]:
+    #for i in range(samples11.shape[0]):
+    for match in matchespart:
+        if match[0] == match[1]:
             correct += 1
         else:
             wrong += 1
@@ -211,14 +225,59 @@ def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50):
 
 def match_des(des1, des2):
     tree = spatial.KDTree(des1)
+    counter = 0
+    ii_orig = []
     ii = []
     dd = []
     for des in des2:
-        d, i = tree.query(des, k=1)
-        ii.append(i)
-        dd.append(d)
+        d, i = tree.query(des, k=2)
+        if abs(d[0] / d[1]) < 0.8:
+        #if True:
+            ii_orig.append(counter)
+            ii.append(i[0])
+            dd.append(d[0])
+        counter += 1
+        
     
-    matches = stack_matches(ii, dd)
+    matches = stack_matches(ii_orig, ii, dd)
     return matches
 
-      
+
+def get_patches(ref_points, num_rotations, lable, patch_dim):
+    #xs, ys, zs = compute_bounding_box_std(ref_points)
+
+    xs = [np.min(ref_points[:, 0]), np.max(ref_points[:, 0])]
+    ys = [np.min(ref_points[:, 1]), np.max(ref_points[:, 1])]
+    zs = [np.min(ref_points[:, 2]), np.max(ref_points[:, 2])]
+    d = xs[1] - xs[0]
+    if(xs[1] - xs[0] < ys[1] - ys[0]):
+        d = ys[1] - ys[0]
+    if (zs[1] - zs[0] > d):
+        d = zs[1] - zs[0]
+    r = d/float(2)
+    X = np.zeros((num_rotations, patch_dim, patch_dim, patch_dim, 1), np.int32)
+    Y = np.zeros((num_rotations), np.int32)
+    z_axis = np.array([0, 0, 1])
+    origin = np.zeros(3)
+    for aug_num, theta in enumerate(my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+        if aug_num == num_rotations:
+            break
+        rot2d = angle_axis_to_rotation(theta, z_axis)
+        rot_points = transform_pc(ref_points, rot2d)
+        #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
+        for rot_pt in rot_points:
+            x = int(((rot_pt[0] + r) / (2 * r))*(patch_dim - 1))
+            y = int(((rot_pt[1] + r) / (2 * r))*(patch_dim - 1))
+            z = int(((rot_pt[2] + r) / (2 * r))*(patch_dim - 1))
+            #x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
+            #y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
+            #z = int(self.patch_dim*(rot_pt[2] / self.l) + self.patch_dim / 2)
+            if (z >= 0) and (z < patch_dim) and (y >= 0) and (y < patch_dim) and (x >= 0) and (x < patch_dim):
+            #patch[x, y, z] = 1
+            #X[point_number*num_rotations + aug_num, x + self.patch_dim * (y + self.patch_dim * z)] = 1
+                X[aug_num, x, y, z, 0] = 1
+        
+        #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
+        Y[aug_num] = lable
+    return X, Y
+

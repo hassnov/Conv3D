@@ -13,7 +13,7 @@ class Sampler:
 
     @staticmethod
     def sample_random(pc, num_point):
-        indices = np.random.permutation(pc.shape[0])[0:num_point, ...]
+        indices = np.random.permutation(pc.shape[0])[0:num_point]
         sampled_pc = pc[indices]
         return sampled_pc, indices
     

@@ -14,13 +14,13 @@ import dataCreator
 def main():
     
     
-    INIT_RATE = 0.01
+    INIT_RATE = 0.001
     LR_DECAY_FACTOR = 0.1
     nr_epochs = 500
     dir1 = os.path.dirname(os.path.realpath(__file__))
     
-    num_rotations = 20
-    BATCH_SIZE = 4
+    num_rotations = 40
+    BATCH_SIZE = 2
     #print 'creating data..'
     #dataCreator.create_data()
     #return 0
@@ -45,7 +45,7 @@ def main():
         net_x = tf.placeholder("float", X.shape, name="in_x")
         net_y = tf.placeholder(tf.int64, Y.shape, name="in_y")
         
-        logits, regularizers = convnnutils.build_graph_3d(net_x, 0.5, reader.num_classes, train=True)
+        logits, regularizers = convnnutils.build_graph_3d_5_3_nopool(net_x, 0.5, reader.num_classes, train=True)
         
         print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()
@@ -56,9 +56,11 @@ def main():
         loss += 5e-4 * regularizers
         
         decay_steps = int(batches_per_epoch)
+        decay_steps = 6000
         lr = tf.train.exponential_decay(INIT_RATE, global_step, decay_steps, LR_DECAY_FACTOR,  staircase=True)
-        opt = tf.train.AdamOptimizer(0.0001)
-        #opt = tf.train.GradientDescentOptimizer(0.5)
+        opt = tf.train.AdamOptimizer(0.00001)
+        #opt = tf.train.GradientDescentOptimizer(0.1)
+        #opt = tf.train.AdagradOptimizer(0.001)
         train_op = opt.minimize(loss, global_step=global_step)
         
         correct_prediction = tf.equal(tf.argmax(logits,1), net_y)
@@ -66,7 +68,7 @@ def main():
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.50)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
@@ -80,26 +82,27 @@ def main():
         #else:
         #    print 'no model to restore'
         
-        saver.restore(sess, "bunny_4_20_1000.ckpt")   # Load previously trained weights
-        print [v.name for v in tf.all_variables()]
+        saver.restore(sess, "bunny_4_40_100_nopool.ckpt")   # Load previously trained weights
+        #print [v.name for v in tf.all_variables()]
         
-        #saver.restore(sess, 'model_bunny_5_10.ckpt')   # Load previously trained weights
+        
         b = 0          
         for epoch in range(nr_epochs):
         #for epoch in range(1):
                 print "Starting epoch ", epoch
                 for batch in range(batches_per_epoch):
-                    X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
+                    #X, Y= reader.next_batch(BATCH_SIZE, num_rotations=num_rotations)
+                    X, Y= reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations)
                     #X = numpy.load('data/train_data_' + str(b) +'.npy')
                     #Y = numpy.load('data/train_label_' + str(b) +'.npy')
                     #b = (b + 1) % 5
                     start_time = time.time()
-                    _, error, acc, gstep = sess.run([train_op, loss, accuracy, global_step], feed_dict={net_x:X, net_y: Y})
+                    _, error, acc, gstep, lr0 = sess.run([train_op, loss, accuracy, global_step, lr], feed_dict={net_x:X, net_y: Y})
                     duration = time.time() - start_time
-                    print "Batch:", batch ,"	Loss: ", error, "	Accuracy: ", acc, "	global step: ", gstep#, "   Duration (sec): ", duration
+                    print "Batch:", batch ,"  Loss: {0:.8f}".format(error), "  Accuracy: {0:.2f}".format(acc), "	lr: {0:.8f}".format(lr0), "  global step: ", gstep#, "   Duration (sec): ", duration
 
                     if batch % 100 == 0:
-                        save_path = saver.save(sess, "bunny_4_20_1000.ckpt")
+                        save_path = saver.save(sess, "bunny_4_40_100_nopool.ckpt")
                         print "Model saved in file: ",save_path
         
         print 'start testing.....'
