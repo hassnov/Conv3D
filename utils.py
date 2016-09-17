@@ -168,6 +168,37 @@ def add_noise_old(pc, prob=0.3, factor=0.02):
             pc1[i] = point
     return pc1
 
+
+def model_resolution(pc):
+    res = 0.0
+    npoints = 0
+    tree = spatial.KDTree(pc) 
+    for p in pc:
+        if not np.isfinite(p):
+            continue
+        dists, indices = tree.query(p[0:3], k=2)
+        if len(indices == 2):
+            res += dists[1]
+            npoints += 1
+    
+    if npoints != 0:
+        return res / float(npoints)
+    return 0
+    
+def add_noise_normal (pc, std=0.1):
+    pc1 =pc
+    xs = pc1[:, 0]
+    ys = pc1[:, 1]
+    zs = pc1[:, 2]
+    noisex = np.random.normal(0, std, pc.shape[0])
+    noisey = np.random.normal(0, std, pc.shape[0])
+    noisez = np.random.normal(0, std, pc.shape[0])
+    xs += noisex
+    ys += noisey
+    zs += noisez
+    return np.asarray(zip(xs.ravel(), ys.ravel(), zs.ravel()))
+    
+    
 def add_noise(pc, prob=0.3, factor=0.02):
     pc1 = pc #np.zeros(pc.shape)
     ii = np.random.permutation(pc.shape[0])[0 : int(pc.shape[0]*prob)]
