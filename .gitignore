@@ -13,3 +13,15 @@ plotutils.pyc
 sampling.pyc
 utils.pyc
 bunny_*
+figures/
+points/
+fpfh/
+obj/
+plytest/
+points_arm.npy
+points_budah.npy
+points_dragon.npy
+points_drill.npy
+points_model.npy
+points_vase.npy
+
