@@ -45,7 +45,7 @@ class PlyReader:
         #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
         #points = zip(x.ravel(), y.ravel(), z.ravel())
         #np.save('points', points)
-        points = np.load('points/points.npy')
+        points = np.load('points/points_arm.npy')
         if add_noise:
             self.data = utils.add_noise(points, prob=noise_prob, factor=noise_factor)
         else:
