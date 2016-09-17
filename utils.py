@@ -198,6 +198,8 @@ def stack_matches(indices_orig, indices, distances):
 
 
 def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50, ignore_size=True):
+    if(len(matches)==0):
+        return 0, 0
     if not ignore_size:
         assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
     assert(samples1.shape[0] == samples2.shape[0])
@@ -220,10 +222,11 @@ def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50, ignor
         else:
             wrong += 1
         i += 1
+#    print "correct: ", correct, "	Wrong: ", wrong, "	len(matches): ", len(matches)
     print 'correct: ', float(correct) / (correct + wrong), '    worng: ', float(wrong) / (correct + wrong)
     return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
 
-def match_des(des1, des2):
+def match_des(des1, des2, ratio=1):
     tree = spatial.KDTree(des1)
     counter = 0
     ii_orig = []
@@ -231,7 +234,7 @@ def match_des(des1, des2):
     dd = []
     for des in des2:
         d, i = tree.query(des, k=2)
-        if abs(d[0] / d[1]) < 0.8:
+        if abs(d[0] / d[1]) < ratio:
         #if True:
             ii_orig.append(counter)
             ii.append(i[0])
