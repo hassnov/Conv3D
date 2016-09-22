@@ -41,7 +41,7 @@ def main(args):
     reader = PlyReader.PlyReader()
     reader_noise = PlyReader.PlyReader()
     
-    reader.read_ply(fileName, num_samples=num_samples, add_noise=False, sampling_algorithm=SampleAlgorithm.Uniform)
+    reader.read_ply(fileName, num_samples=num_samples, add_noise=False, sampling_algorithm=SampleAlgorithm.ISS_Detector)
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
     reader.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50)
@@ -51,9 +51,11 @@ def main(args):
     noise_factor = 0.01
     #print 'noise prob: ', noise_prob, '	noise factor: ', noise_factor
 
-    reader_noise.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=noise_prob, noise_factor=noise_factor, rotation_axis=[0, 0, 1], rotation_angle=utils.rad(angle), sampling_algorithm=SampleAlgorithm.Uniform)
+    reader_noise.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=noise_prob, noise_factor=noise_factor,
+                           rotation_axis=[0, 0, 1], rotation_angle=utils.rad(angle), 
+                           sampling_algorithm=SampleAlgorithm.ISS_Detector)
     reader_noise.set_variables(l=l, patch_dim=patch_dim)
-    reader_noise.samples = reader_noise.data[reader.sample_indices]
+    #reader_noise.samples = reader_noise.data[reader.sample_indices]
 
     
     samples_count = reader.compute_total_samples(num_rotations)
@@ -75,7 +77,7 @@ def main(args):
         net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
         net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
         
-        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_7_5_3_nopool(net_x, 0.5, 800, train=False)
+        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_7_5_3_nopool(net_x, 0.5, 500, train=False)
         
         #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         #loss += 5e-4 * regularizers
@@ -96,7 +98,7 @@ def main(args):
         
         # Create a saver and a summary op based on the tf-collection
         saver = tf.train.Saver(tf.all_variables())
-        saver.restore(sess, os.path.join(models_dir,'bunny_'+ str(train_rotations) +'_7_5_3_800_4models_filter50.ckpt'))   # Load previously trained weights
+        saver.restore(sess, os.path.join(models_dir,'bunny_'+ str(train_rotations) +'_7_5_3_500_4models_iss.ckpt'))   # Load previously trained weights
         
         print [v.name for v in tf.all_variables()]
         b = 0
@@ -152,8 +154,15 @@ def main(args):
         print 'N=', best10
         print 'total sample count', reader.samples.shape[0]
         correct10, wrong10 = utils.correct_matches(reader.samples, reader_noise.samples, matches, N=best10)
+        recall = (len(matches)/float(reader.samples.shape[0])*correct)
         with open("results.txt", "a") as myfile:
-            myfile.write('train rotations: ' + str(train_rotations) + '	num samples: ' + str(num_samples) + '	angle: ' + str(angle) + "	correct: {0:.4f}".format(correct) + "	correct best 10: {0:.4f}".format(correct10) + '	i: ' + args[4] + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format((len(matches)/float(reader.samples.shape[0])*correct)) + '\n')
+            myfile.write('train rotations: ' + str(train_rotations) + '	num samples: ' + str(num_samples) + '	angle: ' + str(angle) + "	correct: {0:.4f}".format(correct) + "	correct best 10: {0:.4f}".format(correct10) + '	i: ' + args[4] + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format(recall) + '\n')
+            myfile.close()
+        with open("precision.txt", "a") as myfile:
+            myfile.write("{0:.4f}".format(correct) + '\n')
+            myfile.close()
+        with open("recall.txt", "a") as myfile:
+            myfile.write("{0:.4f}".format(recall) + '\n')
             myfile.close()
         #plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches, N=200)
     print 'done'
