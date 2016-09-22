@@ -3,6 +3,7 @@ from enum import Enum
 import subprocess
 import os.path
 from plyfile import PlyData
+import utils
 
 class SampleAlgorithm(Enum):
     Uniform = 1
@@ -28,11 +29,12 @@ class Sampler:
         return sampled_pc, indices
 
     @staticmethod
-    def sample_ISS(min_num_point , file_name):
+    def sample_ISS(file_name, min_num_point, pose):
         root, ext = os.path.splitext(file_name)
         in_file = root + ".ply"
         out_file = root + "_iss.ply"
         if (not os.path.isfile(out_file)):
+            print "file doen't exits.................."
             args = ["points/iss_detect", in_file, out_file]
             popen = subprocess.Popen(args, stdout=subprocess.PIPE)
             popen.wait()
@@ -42,8 +44,10 @@ class Sampler:
         vertex = ply['vertex']
         (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
         pc_iss = np.asarray(zip(x.ravel(), y.ravel(), z.ravel()))
+        pc_iss = utils.transform_pc(pc_iss, pose)
         sample_step = int(pc_iss.shape[0] / min_num_point)
-        return Sampler.sample_uniform(pc_iss, sample_step)[0], -1
+        print ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,pc_iss shape:", pc_iss.shape
+        return Sampler.sample_uniform(pc_iss, sample_step)[0], np.full([min_num_point,], -1)
         
         #indices = np.arange(0, pc.shape[0]-1, int(sample_step))
         #sampled_pc = pc[indices]
@@ -59,5 +63,7 @@ class Sampler:
         else:
             if sampling_algorithm == SampleAlgorithm.Random:
                 return Sampler.sample_random(pc, min_num_point)
+            if sampling_algorithm == SampleAlgorithm.ISS_Detector:
+                return Sampler.sample_ISS(file_name, min_num_point, pose=pose)                
         return -1
 

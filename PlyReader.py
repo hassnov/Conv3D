@@ -45,7 +45,7 @@ class PlyReader:
         #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
         #points = zip(x.ravel(), y.ravel(), z.ravel())
         #np.save('points', points)
-        points = np.load('points/points.npy')
+        points = np.load('points/points_bunny.npy')
         if add_noise:
             self.data = utils.add_noise(points, prob=noise_prob, factor=noise_factor)
         else:
@@ -55,7 +55,7 @@ class PlyReader:
         #plotutils.show_pc(self.data)
         #mlab.show()
 #TODO: better sampling
-        self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples-1, sampling_algorithm=sampling_algorithm)
+        self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples-1, file_name="points/points_bunny.npy", pose=rot, sampling_algorithm=sampling_algorithm)
         self.tree = spatial.KDTree(self.data) 
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start

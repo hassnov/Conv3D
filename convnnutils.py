@@ -100,6 +100,55 @@ def build_graph(data, keep_prob, num_classes, d2=False):
         return build_graph_3d_5_3_nopool(data, keep_prob, num_classes)
 
 
+def build_graph_3d_7_5_5(data, keep_prob, num_classes, train=True):
+    data_shape = data.get_shape().as_list()
+    print 'data shape: ', data_shape
+    NUM_CHANNELS = data_shape[4]
+    conv0 = conv3d_layer("conv0",data,[5, 5, 5, NUM_CHANNELS, 64], strides=[1, 2, 2, 2, 1])
+    #pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
+    #pool1 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')
+    
+    conv1 = conv3d_layer("conv1", conv0, [5, 5, 5, 64, 128])
+    
+    pool2 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')
+    
+    conv2 = conv3d_layer("conv2", pool2, [5, 5, 5, 128, 128])
+    #kk = conv1.get_shape().as_list()[1]
+    #kk = kk / 4 
+    #pool44 = tf.nn.max_pool3d(conv1, ksize=[1, kk, kk, kk, 1], strides=[1, kk, kk, kk, 1], padding='SAME', name='pool1')
+    #pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')   
+    #conv2 = conv2d_layer("conv2",pool1,[12, 12, 32, 256])
+    
+    shape = conv2.get_shape().as_list()
+    fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4];   # Resolve input dim into fc0 from conv3-filters
+    
+    #fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
+    W_fc0 = weight_variable([fc0_inputdim, 512])
+    b_fc0 = bias_variable([512])
+    h_pool2_flat = tf.reshape(conv2, [-1, fc0_inputdim])
+    h_fc0 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc0) + b_fc0)
+
+    
+    
+    W_fc1 = weight_variable([512, 2048])
+    b_fc1 = bias_variable([2048])
+    h_fc1 = tf.nn.relu(tf.matmul(h_fc0, W_fc1) + b_fc1)
+    if train:
+        h_fc1 = tf.nn.dropout(h_fc1, keep_prob)
+    
+    #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
+    W_fc2 = weight_variable([2048, num_classes])
+    b_fc2 = bias_variable([num_classes])
+    
+    regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
+                    tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1) +
+                    tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc2))
+    if train:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers 
+    else:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv0, conv1, h_fc0, h_fc1
+
+
 def build_graph_3d_7_5_3_nopool(data, keep_prob, num_classes, train=True):
     data_shape = data.get_shape().as_list()
     print 'data shape: ', data_shape
