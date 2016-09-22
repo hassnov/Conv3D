@@ -257,6 +257,43 @@ def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50, ignor
     print 'correct: ', float(correct) / (correct + wrong), '    worng: ', float(wrong) / (correct + wrong)
     return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
 
+
+def correct_matches_support_radii(samples1, samples2, matches, pose, N=50, ignore_size=True, support_radii=0.01):
+    if(len(matches)==0):
+        return 0, 0
+    if not ignore_size:
+        assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
+    assert(samples1.shape[0] == samples2.shape[0])
+    matchespart = matches
+    if matches.shape[0] > N:
+        matchespart = matches[0:N,...]
+        samples11 = samples1[matches[0:N,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[0:N,1].astype(dtype=np.int16)]
+    else:
+        samples11 = samples1[matches[:,0].astype(dtype=np.int16)]
+        samples22 = samples2[matches[:,1].astype(dtype=np.int16)]
+    assert (samples11.shape == samples22.shape)
+    i = 0
+    correct = 0
+    wrong = 0
+    #for i in range(samples11.shape[0]):
+    for match in matchespart:
+        if correct_match(samples11[match[0]], samples22[match[1]], pose, support_radii):
+            correct += 1
+        else:
+            wrong += 1
+        i += 1
+#    print "correct: ", correct, "    Wrong: ", wrong, "    len(matches): ", len(matches)
+    print 'correct: ', float(correct) / (correct + wrong), '    worng: ', float(wrong) / (correct + wrong)
+    return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
+
+def correct_match(point1, point2, pose, support_radii):
+    proin1_trans = transform_pc(point1, pose)
+    dist = np.linalg.norm(proin1_trans - point2)
+    if dist < (support_radii / 2):
+        return True
+    return False
+
 def match_des(des1, des2, ratio=1):
     tree = spatial.KDTree(des1)
     counter = 0
