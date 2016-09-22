@@ -9,8 +9,8 @@ from sampling import SampleAlgorithm
 import utils
 import time
 import logging
-import plotutils
-from mayavi import mlab
+#import plotutils
+#from mayavi import mlab
 
 import enum
 #from scipy.io.matlab.mio5_utils import scipy
@@ -131,8 +131,8 @@ class PlyReader:
         else:
             self.data = np.asarray(points)
         
-        if self.data.shape[0] > 2e5:
-                self.data, _ = Sampler.sample(self.data, -1, 2e5, sampling_algorithm=self.sampling_algorithm)
+        #if self.data.shape[0] > 2e5:
+        #        self.data, _ = Sampler.sample(self.data, -1, 2e5, sampling_algorithm=self.sampling_algorithm)
             
         pc_diameter = utils.get_pc_diameter(self.data)
         self.l = self.relL*pc_diameter
@@ -145,7 +145,8 @@ class PlyReader:
         #mlab.show()
                 
         #TODO: better sampling
-        self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples, sampling_algorithm=self.sampling_algorithm)
+        print "sampling file: ", file_name
+        self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples, file_name=file_name, sampling_algorithm=self.sampling_algorithm)
         self.samples = self.samples[0:num_samples]
         self.sample_indices = self.sample_indices[0:num_samples]
         
