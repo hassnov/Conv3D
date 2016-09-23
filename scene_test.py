@@ -2,8 +2,8 @@ import ConfigParser
 import os.path
 import numpy
 import utils
-import plotutils
-from mayavi import mlab
+#import plotutils
+#from mayavi import mlab
 from plyfile import PlyData
 from sampling import SampleAlgorithm
 import PlyReader
@@ -32,9 +32,11 @@ def get_scene(base_path, scenes_dir, curr_i):
     #curr_i = (scene_i + 1) % scene_count
     #scene_i = curr_i
      
-    config_path = os.path.join(scenes_dir, 'ConfigScene' + str(curr_i) + '.ini')
+    config_path = os.path.join(scenes_dir, 'ConfigScene' + str(curr_i) + '.ini') 
     config = ConfigParser.ConfigParser()
-    config.read(config_path)
+    print "config path: ", config_path
+    print "config read: ", config.read(config_path)
+    print "config sections: ", config.sections()
     model_path = base_path + map_section(config, "MODELS")['model_0'].strip('\"')
     model_trans_path = base_path + map_section(config, "MODELS")['model_0_groundtruth'].strip('\"')  
     scene_path = base_path + map_section(config, "SCENE")['path'].strip('\"')
@@ -78,24 +80,14 @@ def main(args):
         reader_scene.read_ply(scene_path, num_samples=num_samples, add_noise=False, sampling_algorithm=SampleAlgorithm.ISS_Detector)
         pc_diameter = utils.get_pc_diameter(reader_scene.data)
         l_scene = relL*pc_diameter
+        support_radii = support_radii*pc_diameter
+        print "supprot_radii", support_radii
         reader_scene.set_variables(l=l_scene, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50)
         reader_scene.samples = utils.transform_pc(reader.samples, trans_mat)
         reader_scene.sample_indices = -1
         
         samples_count = reader.compute_total_samples(num_rotations)
         batches_per_epoch = samples_count/BATCH_SIZE
-        
-        plotutils.show_pc(reader.data)
-        mlab.show()
-        
-        plotutils.show_pc(reader.samples)
-        mlab.show()
-        
-        plotutils.show_pc(reader_scene.data)
-        mlab.show()
-        
-        plotutils.show_pc(reader_scene.samples)
-        mlab.show()
         
         with tf.Graph().as_default() as graph:
             #net_x = tf.placeholder("float", X.shape, name="in_x")
@@ -104,7 +96,7 @@ def main(args):
             net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
             net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
             
-            logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_7_5_3_nopool(net_x, 0.5, 500, train=False)
+            logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_3_nopool(net_x, 0.5, 500, train=False)
             
             #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
             #loss += 5e-4 * regularizers
@@ -125,7 +117,7 @@ def main(args):
             
             # Create a saver and a summary op based on the tf-collection
             saver = tf.train.Saver(tf.all_variables())
-            saver.restore(sess, os.path.join(models_dir,'bunny_'+ str(train_rotations) +'_7_5_3_500_4models_iss.ckpt'))   # Load previously trained weights
+            saver.restore(sess, os.path.join(models_dir,'bunny_'+ str(train_rotations) +'_5_3_500_filter40.ckpt'))   # Load previously trained weights
             
             print [v.name for v in tf.all_variables()]
             b = 0
@@ -178,15 +170,15 @@ def main(args):
             print 'total'
             matches = utils.match_des(f1_1s, f1_2s, ratio)
             print 'num_matches: ', len(matches)
-            correct, wrong = utils.correct_matches(reader.samples, reader_scene.samples, matches,
+            correct, wrong = utils.correct_matches_support_radii(reader.samples, reader_scene.samples, matches,
                                                    pose=trans_mat, N=100000, support_radii=support_radii)
             best10 = num_samples//10
             print 'N=', best10
             print 'total sample count', reader.samples.shape[0]
-            correct10, wrong10 = utils.correct_matches(reader.samples, reader_scene.samples, matches,
+            correct10, wrong10 = utils.correct_matches_support_radii(reader.samples, reader_scene.samples, matches,
                                                        pose=trans_mat, N=best10, support_radii=support_radii)
             recall = (len(matches)/float(reader.samples.shape[0])*correct)
-            scene_name = os.path.split(scene_path)[0]
+            scene_name = os.path.split(scene_path)[1]
             with open("results_scene.txt", "a") as myfile:
                 myfile.write('train rotations: ' + str(train_rotations) + '    num samples: ' + str(num_samples) + '    scene: ' + scene_name + "    correct: {0:.4f}".format(correct) + "    correct best 10: {0:.4f}".format(correct10) + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format(recall) + '\n')
                 myfile.close()
@@ -203,6 +195,7 @@ def main(args):
 #    main(sys.argv)
 
 
-main(["", r"/home/hasan/Downloads/3D models/Stanford/Retrieval", "/home/hasan/Downloads", 
-      "18", "40", "100", "0.8", "0.0015"])
+main(["", r"/home/titan/hasan/workspace/Conv3d/retrieval_dataset/3D models/Stanford/Retrieval",
+      "/home/titan/hasan/workspace/Conv3d/retrieval_dataset", 
+      "18", "40", "100", "1.1", "0.04"])
 
