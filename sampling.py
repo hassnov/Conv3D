@@ -35,7 +35,7 @@ class Sampler:
         out_file = root + "_iss.ply"
         if (not os.path.isfile(out_file)):
             print "file doen't exits.................."
-            args = ["points/iss_detect", in_file, out_file]
+            args = ["./iss_detect", in_file, out_file]
             popen = subprocess.Popen(args, stdout=subprocess.PIPE)
             popen.wait()
             output = popen.stdout.read()
