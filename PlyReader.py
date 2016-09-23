@@ -39,13 +39,17 @@ class PlyReader:
     def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False,
                   noise_prob=0.3, noise_factor=0.02, sampling_algorithm=SampleAlgorithm.Uniform,
                   rotation_axis=[0, 0, 1], rotation_angle=0):
+         
+        root, ext = os.path.splitext(file_name)
+        if not os.path.isfile(root + ".npy"):
+            ply = PlyData.read(file_name)
+            vertex = ply['vertex']
+            (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
+            points = zip(x.ravel(), y.ravel(), z.ravel())
+            np.save(root + ".npy", points)
+        else:
+            points = np.load(root + ".npy")
         
-        ply = PlyData.read(file_name)
-        vertex = ply['vertex']
-        (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
-        points = zip(x.ravel(), y.ravel(), z.ravel())
-        #np.save('points', points)
-        #points = np.load('points/points_bunny.npy')
         if add_noise:
             self.data = utils.add_noise(points, prob=noise_prob, factor=noise_factor)
         else:
