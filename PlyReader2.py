@@ -53,6 +53,7 @@ class PlyReader:
     files_list = []
     file_index = 0
 
+    nr_count = 1
 
     
     def fill_files_list(self):
@@ -84,6 +85,7 @@ class PlyReader:
                   noise_prob=0.3, noise_factor=0.02, sampling_algorithm=SampleAlgorithm.Uniform, 
                   rotation_axis=[0, 0, 1], rotation_angle=0, num_classes=2000, 
                   relL=0.07, patch_dim=32, filter_bad_samples=False, filter_threshold=50,
+                  nr_count=1,
                   use_normals_pc=False, use_point_as_mean=False, flip_view_point=False, sigma=0.7071):
         self.files_file = files_file
         self.add_noise = add_noise
@@ -97,6 +99,7 @@ class PlyReader:
         self.sampling_algorithm = sampling_algorithm
         self.filter_bad_samples = filter_bad_samples
         self.filter_threshold = filter_threshold
+        self.nr_count = nr_count
         self.fill_files_list()
         print 'files list: ', self.files_list
         
@@ -181,7 +184,7 @@ class PlyReader:
     
     
     def compute_total_samples(self, num_rotations=20):
-        return self.num_classes*num_rotations
+        return self.num_classes*num_rotations*
     
     
         
@@ -219,15 +222,16 @@ class PlyReader:
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
         Y = np.zeros((batch_size*  num_rotations), np.int32)
         for point_number in range(batch_size):
-            for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
-                if aug_num == num_rotations:
-                    break
-                Y[point_number*num_rotations + aug_num] = self.sample_class_current % self.num_classes
-                temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '.npy'
-                assert(os.path.isfile(temp_file))
-                X[point_number*num_rotations + aug_num] = np.load(temp_file)
-                #print 'file loaded: ', temp_file
-                
+            for nr_num in range(self.nr_count):
+                for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+                    if aug_num == num_rotations:
+                        break
+                    Y[point_number*num_rotations + aug_num] = self.sample_class_current % self.num_classes
+                    temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '_nr'+ str(nr_num) + '.npy'
+                    assert(os.path.isfile(temp_file))
+                    X[point_number*num_rotations + aug_num] = np.load(temp_file)
+                    #print 'file loaded: ', temp_file
+                    
             self.sample_class_current = (self.sample_class_current + 1) % self.num_classes
         return X, Y
             
@@ -277,50 +281,55 @@ class PlyReader:
                 w, v = LA.eigh(cov_mat)
                 min_id = np.argmin(w)
                 #print 'eigenvalues: ', w
-                nr = np.transpose(v[:, min_id])
-                nr = utils.normalize(nr)
-                #nr = [-x for x in nr]
+                nr1 = np.transpose(v[:, min_id])
+                nr1 = utils.normalize(nr1)
+                if self.nr_count > 1:
+                    nr2 = [-x for x in nr1]
+                    nrs = [nr1, nr2]
+                else:
+                    nrs = [nr1]
             
     # at this point the plane is defined by (mu, nr)
     # we transform the mean to be (0,0,0) and the normal to be  (0,0,1)
     # to obtain canonical frame
             z_axis = np.array([0, 0, 1])
             origin = np.zeros(3)
-            local_pose = utils.align_vectors(mu, nr, origin, z_axis)
-            ref_points = utils.transform_pc(local_points, pose=local_pose)
-            #plotutils.show_pc(ref_points, np.zeros((1, 3)), mode='sphere', scale_factor=0.001)
-            #mlab.show()
-            start_time = time.time()
-            for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
-                if aug_num == num_rotations:
-                    break
-                rot2d = utils.angle_axis_to_rotation(theta, z_axis)
-                rot_points = utils.transform_pc(ref_points, rot2d)
-                #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
-                #TODO: use numpy.apply_along_axis
-                rz = r / 3
-                Y[point_number*num_rotations + aug_num] = self.sample_class_current % self.num_classes
-                temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '.npy'
-                if os.path.isfile(temp_file):
-                    X[point_number*num_rotations + aug_num] = np.load(temp_file)
-                    #print 'file loaded: ', temp_file
-                    continue
-                
-                for rot_pt in rot_points:
-                    x = int(((rot_pt[0] + r) / (2 * r))*(self.patch_dim - 1))
-                    y = int(((rot_pt[1] + r) / (2 * r))*(self.patch_dim - 1))
-                    z = int(((rot_pt[2] + rz) / (2 * rz))*(self.patch_dim - 1))
-                    if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
-                        X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
+            for nr_num, nr in enumerate(nrs):
+                local_pose = utils.align_vectors(mu, nr, origin, z_axis)
+                ref_points = utils.transform_pc(local_points, pose=local_pose)
+                #plotutils.show_pc(ref_points, np.zeros((1, 3)), mode='sphere', scale_factor=0.001)
+                #mlab.show()
+                start_time = time.time()
+                for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+                    if aug_num == num_rotations:
+                        break
+                    rot2d = utils.angle_axis_to_rotation(theta, z_axis)
+                    rot_points = utils.transform_pc(ref_points, rot2d)
+                    #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
+                    #TODO: use numpy.apply_along_axis
+                    rz = r / 3
+                    Y[point_number*num_rotations + aug_num] = self.sample_class_current % self.num_classes
+                    temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '_nr'+ str(nr_num) +'.npy'
+                    if os.path.isfile(temp_file):
+                        X[point_number*num_rotations + aug_num] = np.load(temp_file)
+                        #print 'file loaded: ', temp_file
+                        continue
                     
-                #X[point_number*num_rotations + aug_num, :, :, :, 0] = ndimage.morphology.distance_transform_edt(1 - X[point_number*num_rotations + aug_num, :, :, :, 0])
-                #X[point_number*num_rotations + aug_num, :, :, :, 0] /= np.max(X[point_number*num_rotations + aug_num, :, :, :, 0])
+                    for rot_pt in rot_points:
+                        x = int(((rot_pt[0] + r) / (2 * r))*(self.patch_dim - 1))
+                        y = int(((rot_pt[1] + r) / (2 * r))*(self.patch_dim - 1))
+                        z = int(((rot_pt[2] + rz) / (2 * rz))*(self.patch_dim - 1))
+                        if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
+                            X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
                         
-                np.save(temp_file, X[point_number*num_rotations + aug_num])
-                
-            #fig = plotutils.plot_patch_3D(X[point_number*num_rotations + 0], name='patch label ' + str(self.sample_class_current % num_classes))
-            #plt.show()
-            #TODO: start from start not 0 with sample_class_current                
+                    #X[point_number*num_rotations + aug_num, :, :, :, 0] = ndimage.morphology.distance_transform_edt(1 - X[point_number*num_rotations + aug_num, :, :, :, 0])
+                    #X[point_number*num_rotations + aug_num, :, :, :, 0] /= np.max(X[point_number*num_rotations + aug_num, :, :, :, 0])
+                            
+                    np.save(temp_file, X[point_number*num_rotations + aug_num])
+                    
+                #fig = plotutils.plot_patch_3D(X[point_number*num_rotations + 0], name='patch label ' + str(self.sample_class_current % num_classes))
+                #plt.show()
+                #TODO: start from start not 0 with sample_class_current                
             self.sample_class_current = (self.sample_class_current + 1) % self.num_classes
         return X, Y
 
