@@ -278,7 +278,7 @@ def correct_matches_support_radii(samples1, samples2, matches, pose, N=50, ignor
     wrong = 0
     #for i in range(samples11.shape[0]):
     for match in matchespart:
-        if correct_match(samples11[match[0]], samples22[match[1]], pose, support_radii):
+        if correct_match(samples1[int(match[0])], samples2[int(match[1])], pose, support_radii):
             correct += 1
         else:
             wrong += 1
@@ -288,8 +288,10 @@ def correct_matches_support_radii(samples1, samples2, matches, pose, N=50, ignor
     return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
 
 def correct_match(point1, point2, pose, support_radii):
-    proin1_trans = transform_pc(point1, pose)
-    dist = np.linalg.norm(proin1_trans - point2)
+    #print "point1: ", point1
+    #print "pose: ", pose
+    proin1_trans = transform_pc(np.reshape(point1, [1, point1.shape[0]]), pose)
+    dist = np.linalg.norm(proin1_trans - np.asarray(point2))
     if dist < (support_radii / 2):
         return True
     return False
