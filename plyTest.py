@@ -365,7 +365,7 @@ def main_noise():
     mlab.show()
 
 def main_show_ply():
-    pc = utils.read_ply('/home/hasan/Downloads/3D models/Stanford/armadillo/Armadillo_vres2_small_scaled_0.ply')
+    pc = utils.read_ply('/home/hasan/Downloads/UWA/rs1_0.ply')
     plotutils.show_pc(pc)
     mlab.show()
     
