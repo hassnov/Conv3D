@@ -100,7 +100,7 @@ def build_graph(data, keep_prob, num_classes, d2=False):
         return build_graph_3d_5_3_nopool(data, keep_prob, num_classes)
 
 
-def build_graph_3d_7_5_5(data, keep_prob, num_classes, train=True):
+def build_graph_3d_5_5_5(data, keep_prob, num_classes, train=True):
     data_shape = data.get_shape().as_list()
     print 'data shape: ', data_shape
     NUM_CHANNELS = data_shape[4]
