@@ -122,13 +122,16 @@ class PlyReader:
         if self.file_index == len(self.files_list) - 1:
             num_samples = num_samples + (self.num_classes - (num_samples * len(self.files_list)))
         
-        #ply = PlyData.read(file_name)
-        #vertex = ply['vertex']
-        #(x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
-        #points = zip(x.ravel(), y.ravel(), z.ravel())
-        #np.save('points_vase', points)
-        #points = np.load('points.npy')
-        points = np.load(file_name)
+        root, ext = os.path.splitext(file_name)
+        if not os.path.isfile(root + ".npy"):
+            ply = PlyData.read(file_name)
+            vertex = ply['vertex']
+            (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
+            points = zip(x.ravel(), y.ravel(), z.ravel())
+            np.save(root + ".npy", points)
+        else:
+            points = np.load(root + ".npy")
+            
         if self.add_noise:
             self.data = utils.add_noise(points, prob=self.noise_prob, factor=self.noise_factor)
         else:
@@ -184,7 +187,7 @@ class PlyReader:
     
     
     def compute_total_samples(self, num_rotations=20):
-        return self.num_classes*num_rotations*
+        return self.num_classes*num_rotations*self.nr_count
     
     
         
@@ -219,17 +222,17 @@ class PlyReader:
             
         
     def next_batch_3d_file(self, batch_size, num_rotations=20):
-        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
-        Y = np.zeros((batch_size*  num_rotations), np.int32)
+        X = np.zeros((batch_size*  num_rotations * self.nr_count, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
+        Y = np.zeros((batch_size*  num_rotations * self.nr_count), np.int32)
         for point_number in range(batch_size):
             for nr_num in range(self.nr_count):
                 for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
                     if aug_num == num_rotations:
                         break
-                    Y[point_number*num_rotations + aug_num] = self.sample_class_current % self.num_classes
+                    Y[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = self.sample_class_current % self.num_classes
                     temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '_nr'+ str(nr_num) + '.npy'
                     assert(os.path.isfile(temp_file))
-                    X[point_number*num_rotations + aug_num] = np.load(temp_file)
+                    X[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = np.load(temp_file)
                     #print 'file loaded: ', temp_file
                     
             self.sample_class_current = (self.sample_class_current + 1) % self.num_classes
@@ -248,8 +251,8 @@ class PlyReader:
             self.next_file()
             pc_samples = np.vstack((pc_samples, self.samples[0:self.index]))
         
-        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
-        Y = np.zeros((batch_size*  num_rotations), np.int32)
+        X = np.zeros((batch_size *  num_rotations * self.nr_count, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
+        Y = np.zeros((batch_size *  num_rotations * self.nr_count), np.int32)
         
         #r = self.l / np.sqrt(2)
         r = self.l# / np.sqrt(2)
@@ -308,10 +311,10 @@ class PlyReader:
                     #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
                     #TODO: use numpy.apply_along_axis
                     rz = r / 3
-                    Y[point_number*num_rotations + aug_num] = self.sample_class_current % self.num_classes
+                    Y[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = self.sample_class_current % self.num_classes
                     temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '_nr'+ str(nr_num) +'.npy'
                     if os.path.isfile(temp_file):
-                        X[point_number*num_rotations + aug_num] = np.load(temp_file)
+                        X[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = np.load(temp_file)
                         #print 'file loaded: ', temp_file
                         continue
                     
@@ -320,12 +323,12 @@ class PlyReader:
                         y = int(((rot_pt[1] + r) / (2 * r))*(self.patch_dim - 1))
                         z = int(((rot_pt[2] + rz) / (2 * rz))*(self.patch_dim - 1))
                         if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
-                            X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
+                            X[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations, x, y, z, 0] = 1
                         
                     #X[point_number*num_rotations + aug_num, :, :, :, 0] = ndimage.morphology.distance_transform_edt(1 - X[point_number*num_rotations + aug_num, :, :, :, 0])
                     #X[point_number*num_rotations + aug_num, :, :, :, 0] /= np.max(X[point_number*num_rotations + aug_num, :, :, :, 0])
                             
-                    np.save(temp_file, X[point_number*num_rotations + aug_num])
+                    np.save(temp_file, X[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations])
                     
                 #fig = plotutils.plot_patch_3D(X[point_number*num_rotations + 0], name='patch label ' + str(self.sample_class_current % num_classes))
                 #plt.show()
