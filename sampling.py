@@ -4,6 +4,8 @@ import subprocess
 import os.path
 from plyfile import PlyData
 import utils
+from scipy import spatial
+
 
 class SampleAlgorithm(Enum):
     Uniform = 1
@@ -40,14 +42,25 @@ class Sampler:
             popen.wait()
             output = popen.stdout.read()
             print output
+        pc = np.load(root + '.npy')
+        tree = spatial.KDTree(pc)
         ply = PlyData.read(out_file)
         vertex = ply['vertex']
         (x, y, z) = (vertex[t] for t in ('x', 'y', 'z'))
         pc_iss = np.asarray(zip(x.ravel(), y.ravel(), z.ravel()))
+        indices = np.zeros((pc_iss.shape[0],))
+        for pt_i, samplept in enumerate(pc_iss):
+            _, index = tree.query(samplept, k=1)
+            indices[pt_i] = index    
         pc_iss = utils.transform_pc(pc_iss, pose)
+        
         sample_step = int(pc_iss.shape[0] / min_num_point)
+        pc_iss_samples, _ = Sampler.sample_uniform(pc_iss, sample_step)
+        indices_samples, _ = Sampler.sample_uniform(indices, sample_step)
+        assert(pc_iss_samples.shape[0] == indices_samples.shape[0])
         print ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,pc_iss shape:", pc_iss.shape
-        return Sampler.sample_uniform(pc_iss, sample_step)[0], np.full([min_num_point,], -1)
+        return pc_iss_samples, indices_samples
+        #return Sampler.sample_uniform(pc_iss, sample_step)[0], np.full([min_num_point,], -1)
         
         #indices = np.arange(0, pc.shape[0]-1, int(sample_step))
         #sampled_pc = pc[indices]
