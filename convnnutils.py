@@ -39,16 +39,16 @@ def conv2d_layer(name, input_data, shape, wd=0.1):
 
 
 def weight_variable(shape, name='weight'):
-    #initial = tf.truncated_normal(shape, stddev=0.1)
-    initial = xavier_fc_init(shape)
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    #initial = xavier_fc_init(shape)
     #return tf.get_variable(name=name , shape=shape, dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer(), trainable=True)
     return tf.Variable(initial, name=name)
 
 def conv3d_layer(name, input_data, shape, wd=0.1, strides=[1, 1, 1, 1, 1]):
     with tf.variable_scope(name):
         # Variables created here will be named "name/weights", "name/biases".
-        weights = tf.Variable(xavier_conv3_init(shape), name='weights')
-        #weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
+        #weights = tf.Variable(xavier_conv3_init(shape), name='weights')
+        weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
         #weights = weight_variable(shape)
         #if wd>0:
         #    tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(weights), wd, name='decay'))
