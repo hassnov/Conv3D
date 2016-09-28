@@ -54,6 +54,9 @@ class Sampler:
             indices[pt_i] = index    
         pc_iss = utils.transform_pc(pc_iss, pose)
         
+        if min_num_point >= pc_iss.shape[0]:
+            return pc_iss, indices
+        
         sample_step = int(pc_iss.shape[0] / min_num_point)
         pc_iss_samples, _ = Sampler.sample_uniform(pc_iss, sample_step)
         indices_samples, _ = Sampler.sample_uniform(indices, sample_step)
