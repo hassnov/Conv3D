@@ -230,14 +230,14 @@ def build_graph_3d_7_5_3_nopool(data, keep_prob, num_classes, train=True):
 
     
     
-    W_fc1 = weight_variable([512, 2048])
-    b_fc1 = bias_variable([2048])
+    W_fc1 = weight_variable([512, 1024])
+    b_fc1 = bias_variable([1024])
     h_fc1 = tf.nn.relu(tf.matmul(h_fc0, W_fc1) + b_fc1)
     if train:
         h_fc1 = tf.nn.dropout(h_fc1, keep_prob)
     
     #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
-    W_fc2 = weight_variable([2048, num_classes])
+    W_fc2 = weight_variable([1024, num_classes])
     b_fc2 = bias_variable([num_classes])
     
     regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
