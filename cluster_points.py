@@ -23,6 +23,7 @@ class ClusterPoints:
     sample_indices = None
     num_samples = None
     num_clusters = None
+    labels = None
     index = 0
     tree = None
     
@@ -201,6 +202,7 @@ class ClusterPoints:
         labels_unique = np.unique(labels)
         n_clusters_ = len(labels_unique)
         self.num_clusters = n_clusters_
+        self.labels = ms.labels_
         print("number of estimated clusters : %d" % n_clusters_)
         return ms
         
@@ -238,11 +240,11 @@ class ClusterPoints:
         z_axis = np.array([0, 0, 1])
         
         #### clustering
-        print "clustering..."
-        ms = self.cluster_list(eigen_list, bandwidth=0.000015)
-        np.save(dir_temp + "num_clusters", self.num_clusters)
-        labels = ms.labels_
-        assert (global_i == len(labels))
+        #print "clustering..."
+        #ms = self.cluster_list(eigen_list, bandwidth=0.000015)
+        #np.save(dir_temp + "num_clusters", self.num_clusters)
+        #labels = ms.labels_
+        #assert (global_i == len(labels))
         
         #### saving data set after clustering
         print "creating dataset"
@@ -272,21 +274,22 @@ class ClusterPoints:
                         
                         if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                             X[aug_num, x, y, z, 0] = 1
-                    #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
-                    Y[aug_num] = labels[global_i]
                     np.save(dir_temp + "sample_" + str(global_i) + "_" + str(aug_num), X[aug_num])
-                    np.save(dir_temp + "label_" +  str(global_i) + "_" + str(aug_num), Y[aug_num])
                 if global_i % 100 == 0:
                     print "sample: ", global_i
                 global_i += 1
         self.save_meta(dir_temp)
     
-    def load_dataset(self, dir_temp='temp/'):
+    def load_dataset(self, dir_temp='temp/', bandwidth=0.00015):
         #self.num_clusters = np.load(dir_temp + "num_clusters.npy")
         meta = np.load(dir_temp + "meta.npy")
+        eigen_list = np.load(dir_temp + "eigen_list.npy")
+        ms = self.cluster_list(eigen_list, bandwidth=0.000015)
+        
         self.num_clusters = meta[0]
         self.num_samples = meta[1]
         self.patch_dim = meta[2]
+        
         print [self.num_clusters, self.num_samples, self.patch_dim]
             
     
@@ -307,7 +310,8 @@ class ClusterPoints:
                 assert(os.path.isfile(temp_file_sample))
                 assert(os.path.isfile(temp_file_label))
                 X[point_number*num_rotations + aug_num ] = np.load(temp_file_sample)
-                Y[point_number*num_rotations + aug_num ] = np.load(temp_file_label)
+                #Y[point_number*num_rotations + aug_num ] = np.load(temp_file_label)
+                Y[point_number*num_rotations + aug_num ] = self.labels[self.sample_class_current]
             self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
         return X, Y
             
