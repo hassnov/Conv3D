@@ -365,9 +365,13 @@ def main_noise():
     mlab.show()
 
 def main_show_ply():
-    pc = utils.read_ply('/home/hasan/Downloads/UWA/rs1_0.ply')
-    plotutils.show_pc(pc)
-    mlab.show()
+    #pc = utils.read_ply('/home/hasan/Downloads/UWA/rs1_0.ply')
+    #plotutils.show_pc(pc)
+    #mlab.show()
+    
+    patch = np.load("temp/sample_77_1.npy")
+    plotutils.plot_patch_3D(patch)
+    plt.show()
     
     
 main_show_ply()
