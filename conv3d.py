@@ -211,7 +211,7 @@ def main():
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
-    print 'classes: ', reader.num_classes
+    print 'classes: ', reader.num_samples
     reader.set_variables(l=l, patch_dim=patch_dim)
     samples_count = reader.compute_total_samples(num_rotations)
     batches_per_epoch = samples_count/BATCH_SIZE
@@ -236,7 +236,7 @@ def main():
         #lr = tf.placeholder(tf.float32)
         # Build the graph that computes predictions and assert that network output is compatible
         
-        logits, regularizers = convnnutils.build_graph_3_3_512(net_x, 0.5, reader.num_classes, train=True)
+        logits, regularizers = convnnutils.build_graph_3_3_512(net_x, 0.5, reader.num_samples, train=True)
         
         print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()
