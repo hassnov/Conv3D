@@ -9,8 +9,8 @@ from sampling import SampleAlgorithm
 import utils
 import time
 import logging
-import plotutils
-from mayavi import mlab
+#import plotutils
+#from mayavi import mlab
 import enum
 from sklearn.cluster import MeanShift, estimate_bandwidth
 
@@ -223,7 +223,7 @@ class ClusterPoints:
                 cov_mat_ref = utils.build_cov(ref_points, mean=origin)
                 w_ref, v_ref = LA.eigh(cov_mat_ref)
                 eigen_list.append(w_ref)
-                #np.save(dir_temp + "sample_" + str(global_i), ref_points)
+                np.save(dir_temp + "ref_points/sample_" + str(global_i), ref_points)
                 #plotutils.show_pc(ref_points)
                 #mlab.show()
                 if global_i % 100 == 0:
@@ -233,9 +233,9 @@ class ClusterPoints:
         return np.asarray(eigen_list), global_i
         
         
-    def create_dataset(self, dir_temp='temp/', num_rotations=40, bandwidth=0.000015):
+    def create_dataset(self, dir_temp='temp/', num_rotations=40):
         print "creating eigen list....."
-        eigen_list, global_i = self.create_eigen_list(dir_temp)
+        _, _ = self.create_eigen_list(dir_temp)
         print "eigen list created" 
         z_axis = np.array([0, 0, 1])
         
@@ -247,9 +247,9 @@ class ClusterPoints:
         #assert (global_i == len(labels))
         
         #### saving data set after clustering
-        print "creating dataset"
+        print "creating dataset..."
         X = np.zeros((1*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
-        Y = np.zeros((1*  num_rotations), np.int32)
+        #Y = np.zeros((1*  num_rotations), np.int32)
         global_i = 0 
         for file in self.files_list:
             self.read_ply(file)
@@ -258,14 +258,16 @@ class ClusterPoints:
             #pc_sample_indices = self.sample_indices
             print "samples count: ", pc_samples.shape[0]
             for _, samplept in enumerate(pc_samples):
+                X.fill(0)
+                #Y.fill(0)
                 ref_points, local_points = self.get_ref_points(samplept, r)
                 for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
                     if aug_num == num_rotations:
                         break
                     rot2d = utils.angle_axis_to_rotation(theta, z_axis)
                     rot_points = utils.transform_pc(ref_points, rot2d)
-                    #rz = r / 2
-                    rz = np.max ([np.max(ref_points[:, 2]), -np.min(ref_points[:, 2])])
+                    rz = r / 2
+                    #rz = np.max ([np.max(ref_points[:, 2]), -np.min(ref_points[:, 2])])
                     for rot_pt in rot_points:
                                             
                         x = int(((rot_pt[0] + r) / (2 * r))*(self.patch_dim - 1))
@@ -284,11 +286,15 @@ class ClusterPoints:
         #self.num_clusters = np.load(dir_temp + "num_clusters.npy")
         meta = np.load(dir_temp + "meta.npy")
         eigen_list = np.load(dir_temp + "eigen_list.npy")
-        ms = self.cluster_list(eigen_list, bandwidth=0.000015)
+        ms = self.cluster_list(eigen_list, bandwidth=bandwidth)
         
-        self.num_clusters = meta[0]
+        #self.num_clusters = meta[0]
         self.num_samples = meta[1]
         self.patch_dim = meta[2]
+        
+        #self.num_clusters = self.num_samples
+        #self.labels = range(self.num_samples)
+        #print self.labels 
         
         print [self.num_clusters, self.num_samples, self.patch_dim]
             
@@ -302,16 +308,18 @@ class ClusterPoints:
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
         Y = np.zeros((batch_size*  num_rotations), np.int32)
         for point_number in range(batch_size):
-            for aug_num, _ in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+            #for aug_num, _ in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+            for aug_num in range(num_rotations):
                 if aug_num == num_rotations:
                     break
                 temp_file_sample = dir_temp + "sample_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
-                temp_file_label = dir_temp + "label_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
+                #temp_file_label = dir_temp + "label_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
                 assert(os.path.isfile(temp_file_sample))
-                assert(os.path.isfile(temp_file_label))
+                
                 X[point_number*num_rotations + aug_num ] = np.load(temp_file_sample)
                 #Y[point_number*num_rotations + aug_num ] = np.load(temp_file_label)
                 Y[point_number*num_rotations + aug_num ] = self.labels[self.sample_class_current]
+                logging.info('sample: ' + str(self.sample_class_current) + '    label: ' + str(self.labels[self.sample_class_current]) + '    file: ' + temp_file_sample)
             self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
         return X, Y
             

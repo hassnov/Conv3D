@@ -58,7 +58,7 @@ def main():
         decay_steps = int(batches_per_epoch)
         decay_steps = 6000
         lr = tf.train.exponential_decay(INIT_RATE, global_step, decay_steps, LR_DECAY_FACTOR,  staircase=True)
-        opt = tf.train.AdamOptimizer(0.00001)
+        opt = tf.train.AdamOptimizer(0.01)
         #opt = tf.train.GradientDescentOptimizer(0.1)
         #opt = tf.train.AdagradOptimizer(0.001)
         train_op = opt.minimize(loss, global_step=global_step)
@@ -82,7 +82,7 @@ def main():
         #else:
         #    print 'no model to restore'
         
-        saver.restore(sess, "bunny_4_40_100_nopool.ckpt")   # Load previously trained weights
+        #saver.restore(sess, "bunny_4_40_100_nopool.ckpt")   # Load previously trained weights
         #print [v.name for v in tf.all_variables()]
         
         
@@ -102,7 +102,7 @@ def main():
                     print "Batch:", batch ,"  Loss: {0:.8f}".format(error), "  Accuracy: {0:.2f}".format(acc), "	lr: {0:.8f}".format(lr0), "  global step: ", gstep#, "   Duration (sec): ", duration
 
                     if batch % 100 == 0:
-                        save_path = saver.save(sess, "bunny_4_40_100_nopool.ckpt")
+                        save_path = saver.save(sess, "/home/titan/hasan/workspace/Conv3d/bunny_4_40_100_nopool.ckpt")
                         print "Model saved in file: ",save_path
         
         print 'start testing.....'

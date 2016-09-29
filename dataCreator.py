@@ -19,7 +19,7 @@ def create_reader():
     
     dir1 = os.path.dirname(os.path.realpath(__file__))
     
-    fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
+    fileName = os.path.join(dir1, 'points1/bunny.ply')
     reader = PlyReader.PlyReader()
     start_time = time.time()
     reader.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=0.3, noise_factor=0.01)
