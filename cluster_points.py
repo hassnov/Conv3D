@@ -21,7 +21,8 @@ class ClusterPoints:
     data = None
     samples = None
     sample_indices = None
-    num_classes = None
+    num_samples = None
+    num_clusters = None
     index = 0
     tree = None
     
@@ -49,7 +50,7 @@ class ClusterPoints:
     files_list = []
     file_index = 0
 
-    nr_count = 1
+    #nr_count = 1
 
     
     def fill_files_list(self):
@@ -88,7 +89,7 @@ class ClusterPoints:
         self.noise_std = noise_std
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start
-        self.num_classes = num_classes
+        self.num_samples = num_classes
         self.sampling_algorithm = sampling_algorithm
         self.fill_files_list()
         print 'files list: ', self.files_list
@@ -108,9 +109,9 @@ class ClusterPoints:
 
 
     def read_ply(self, file_name):
-        num_samples = self.num_classes // len(self.files_list)
+        num_samples = self.num_samples // len(self.files_list)
         if self.file_index == len(self.files_list) - 1:
-            num_samples = num_samples + (self.num_classes - (num_samples * len(self.files_list)))
+            num_samples = num_samples + (self.num_samples - (num_samples * len(self.files_list)))
         
         root, ext = os.path.splitext(file_name)
         if not os.path.isfile(root + ".npy"):
@@ -149,7 +150,7 @@ class ClusterPoints:
     
     
     def compute_total_samples(self, num_rotations=20):
-        return self.num_classes*num_rotations*self.nr_count
+        return self.num_samples*num_rotations
         
     
     def get_ref_points(self, samplept, r):
@@ -190,7 +191,7 @@ class ClusterPoints:
         
     def cluster_list(self, eigen_list, bandwidth=0.00015):
         
-        bandwidth = estimate_bandwidth(eigen_list, quantile=0.1)
+        #bandwidth = estimate_bandwidth(eigen_list, quantile=0.1)
         print "bandwidth: ", bandwidth
         ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
         ms.fit(eigen_list)
@@ -199,6 +200,7 @@ class ClusterPoints:
         
         labels_unique = np.unique(labels)
         n_clusters_ = len(labels_unique)
+        self.num_clusters = n_clusters_
         print("number of estimated clusters : %d" % n_clusters_)
         return ms
         
@@ -228,7 +230,8 @@ class ClusterPoints:
         np.save(dir_temp + "eigen_list", np.asarray(eigen_list))
         return np.asarray(eigen_list), global_i
         
-    def create_dataset(self, dir_temp='temp/', num_rotations=40):
+        
+    def create_dataset(self, dir_temp='temp/', num_rotations=40, bandwidth=0.000015):
         print "creating eigen list....."
         eigen_list, global_i = self.create_eigen_list(dir_temp)
         print "eigen list created" 
@@ -237,6 +240,7 @@ class ClusterPoints:
         #### clustering
         print "clustering..."
         ms = self.cluster_list(eigen_list, bandwidth=0.000015)
+        np.save(dir_temp + "num_clusters", self.num_clusters)
         labels = ms.labels_
         assert (global_i == len(labels))
         
@@ -270,28 +274,41 @@ class ClusterPoints:
                             X[aug_num, x, y, z, 0] = 1
                     #X[point_number*num_rotations + aug_num, :] = patch.reshape((np.power(self.patch_dim, 3),))
                     Y[aug_num] = labels[global_i]
-                    np.save(dir_temp + "sample_" + str(global_i) + "_" + str(aug_num) + "_" + str(labels[global_i]), X)
-                    np.save(dir_temp + "label_" +  str(global_i) + "_" + str(aug_num) + "_" + str(labels[global_i]), Y)
+                    np.save(dir_temp + "sample_" + str(global_i) + "_" + str(aug_num), X[aug_num])
+                    np.save(dir_temp + "label_" +  str(global_i) + "_" + str(aug_num), Y[aug_num])
                 if global_i % 100 == 0:
                     print "sample: ", global_i
                 global_i += 1
+        self.save_meta(dir_temp)
+    
+    def load_dataset(self, dir_temp='temp/'):
+        #self.num_clusters = np.load(dir_temp + "num_clusters.npy")
+        meta = np.load(dir_temp + "meta.npy")
+        self.num_clusters = meta[0]
+        self.num_samples = meta[1]
+        self.patch_dim = meta[2]
+        print [self.num_clusters, self.num_samples, self.patch_dim]
             
+    
+    def save_meta(self, dir_temp='temp/'):
+        meta = [self.num_clusters, self.num_samples, self.patch_dim]
+        np.save(dir_temp + "meta", meta)
+         
+
+    def next_batch_3d_file(self, batch_size, num_rotations=40, dir_temp='temp/'):
+        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
+        Y = np.zeros((batch_size*  num_rotations), np.int32)
+        for point_number in range(batch_size):
+            for aug_num, _ in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+                if aug_num == num_rotations:
+                    break
+                temp_file_sample = dir_temp + "sample_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
+                temp_file_label = dir_temp + "label_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
+                assert(os.path.isfile(temp_file_sample))
+                assert(os.path.isfile(temp_file_label))
+                X[point_number*num_rotations + aug_num ] = np.load(temp_file_sample)
+                Y[point_number*num_rotations + aug_num ] = np.load(temp_file_label)
+            self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
+        return X, Y
             
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-        
-        
-        
-        
         
