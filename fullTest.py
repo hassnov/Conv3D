@@ -45,7 +45,7 @@ def main():
         net_x = tf.placeholder("float", X.shape, name="in_x")
         net_y = tf.placeholder(tf.int64, Y.shape, name="in_y")
         
-        logits, regularizers = convnnutils.build_graph_3d_5_3_nopool(net_x, 0.5, reader.num_classes, train=True)
+        logits, regularizers = convnnutils.build_graph_3d_5_3_nopool(net_x, 0.5, reader.num_samples, train=True)
         
         print 'logits shape: ',logits.get_shape().as_list(), ' net_y shape: ', net_y.get_shape().as_list()
         print 'X shape: ',  net_x.get_shape().as_list()

@@ -23,7 +23,7 @@ class PlyReader:
     data = None
     samples = None
     sample_indices = None
-    num_classes = None
+    num_samples = None
     index = 0
     tree = None
     
@@ -95,7 +95,7 @@ class PlyReader:
         self.noise_factor = noise_factor
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start
-        self.num_classes = num_classes
+        self.num_samples = num_classes
         self.sampling_algorithm = sampling_algorithm
         self.filter_bad_samples = filter_bad_samples
         self.filter_threshold = filter_threshold
@@ -118,9 +118,9 @@ class PlyReader:
 
 
     def read_ply(self, file_name):
-        num_samples = self.num_classes // len(self.files_list)
+        num_samples = self.num_samples // len(self.files_list)
         if self.file_index == len(self.files_list) - 1:
-            num_samples = num_samples + (self.num_classes - (num_samples * len(self.files_list)))
+            num_samples = num_samples + (self.num_samples - (num_samples * len(self.files_list)))
         
         root, ext = os.path.splitext(file_name)
         if not os.path.isfile(root + ".npy"):
@@ -187,7 +187,7 @@ class PlyReader:
     
     
     def compute_total_samples(self, num_rotations=20):
-        return self.num_classes*num_rotations*self.nr_count
+        return self.num_samples*num_rotations*self.nr_count
     
     
         
@@ -229,19 +229,19 @@ class PlyReader:
                 for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
                     if aug_num == num_rotations:
                         break
-                    Y[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = self.sample_class_current % self.num_classes
+                    Y[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = self.sample_class_current % self.num_samples
                     temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '_nr'+ str(nr_num) + '.npy'
                     assert(os.path.isfile(temp_file))
                     X[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = np.load(temp_file)
                     #print 'file loaded: ', temp_file
                     
-            self.sample_class_current = (self.sample_class_current + 1) % self.num_classes
+            self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
         return X, Y
             
         
         
     def next_batch_3d(self, batch_size, num_rotations=20):
-        logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % self.num_classes) )
+        logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % self.num_samples) )
         if self.index + batch_size <= self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
             self.index += batch_size
@@ -311,7 +311,7 @@ class PlyReader:
                     #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
                     #TODO: use numpy.apply_along_axis
                     rz = r / 3
-                    Y[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = self.sample_class_current % self.num_classes
+                    Y[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = self.sample_class_current % self.num_samples
                     temp_file = 'temp/' + str(self.sample_class_current) + '_' + str(num_rotations) + '_' + str(aug_num) + '_nr'+ str(nr_num) +'.npy'
                     if os.path.isfile(temp_file):
                         X[point_number*num_rotations*self.nr_count + aug_num + nr_num*num_rotations] = np.load(temp_file)
@@ -333,13 +333,13 @@ class PlyReader:
                 #fig = plotutils.plot_patch_3D(X[point_number*num_rotations + 0], name='patch label ' + str(self.sample_class_current % num_classes))
                 #plt.show()
                 #TODO: start from start not 0 with sample_class_current                
-            self.sample_class_current = (self.sample_class_current + 1) % self.num_classes
+            self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
         return X, Y
 
  
     def next_batch_2d(self, batch_size, num_rotations=20, num_classes=-1, num_channels=3):
         if num_classes == -1:
-            num_classes = self.num_classes
+            num_classes = self.num_samples
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
             self.index += batch_size
@@ -438,7 +438,7 @@ class PlyReader:
 
     def next_batch_3d_sdf(self, batch_size, num_rotations=20, num_classes=-1):
         if num_classes == -1:
-            num_classes = self.num_classes
+            num_classes = self.num_samples
         logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % num_classes) )
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]

@@ -33,7 +33,7 @@ def main():
         net_x = tf.placeholder("float", X.shape, name="in_x")
         net_y = tf.placeholder(tf.int64, Y.shape, name="in_y")
         
-        logits, regularizers,_,_,_,_ = convnnutils.build_graph_3d(net_x, 0.5, reader.num_classes, train=False)
+        logits, regularizers,_,_,_,_ = convnnutils.build_graph_3d(net_x, 0.5, reader.num_samples, train=False)
         
         loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         loss += 5e-4 * regularizers

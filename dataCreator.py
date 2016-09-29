@@ -26,7 +26,7 @@ def create_reader():
     print 'reading time: ', time.time() - start_time
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
-    print 'classes: ', reader.num_classes
+    print 'classes: ', reader.num_samples
     reader.set_variables(l=l, patch_dim=patch_dim)
     
     return reader

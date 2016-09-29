@@ -21,7 +21,7 @@ class PlyReader:
     data = None
     samples = None
     sample_indices = None
-    num_classes = None
+    num_samples = None
     index = 0
     l = None
     num_rotations = None
@@ -63,7 +63,7 @@ class PlyReader:
         self.tree = spatial.KDTree(self.data) 
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start
-        self.num_classes = self.samples.shape[0]
+        self.num_samples = self.samples.shape[0]
         logging.basicConfig(filename='example.log',level=logging.DEBUG)
         return self.data
     
@@ -83,7 +83,7 @@ class PlyReader:
                     sample_indices_temp.append(idx)
             self.sample_indices = np.asarray(sample_indices_temp)
             self.samples = self.data[self.sample_indices]
-            self.num_classes = self.samples.shape[0]
+            self.num_samples = self.samples.shape[0]
         
     
     def compute_total_samples(self, num_rotations=20):
@@ -121,7 +121,7 @@ class PlyReader:
     
     def next_batch_3d(self, batch_size, num_rotations=20, num_classes=-1):
         if num_classes == -1:
-            num_classes = self.num_classes
+            num_classes = self.num_samples
         logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % num_classes) )
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
@@ -210,7 +210,7 @@ class PlyReader:
 
     def next_batch_2d(self, batch_size, num_rotations=20, num_classes=-1, num_channels=3):
         if num_classes == -1:
-            num_classes = self.num_classes
+            num_classes = self.num_samples
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
             self.index += batch_size
@@ -353,7 +353,7 @@ class PlyReader:
 
     def next_batch_3d_sdf(self, batch_size, num_rotations=20, num_classes=-1):
         if num_classes == -1:
-            num_classes = self.num_classes
+            num_classes = self.num_samples
         logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % num_classes) )
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
