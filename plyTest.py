@@ -365,13 +365,35 @@ def main_noise():
     mlab.show()
 
 def main_show_ply():
-    #pc = utils.read_ply('/home/hasan/Downloads/UWA/rs1_0.ply')
-    #plotutils.show_pc(pc)
-    #mlab.show()
+    pc = utils.read_ply('/home/hasan/Downloads/shrec15/D00008.ply')
+    #samples, _ = Sampler.sample(pc, -1, 100000, "", pose=-1, sampling_algorithm=SampleAlgorithm.Uniform)
+    #np.save("points/lucysample", samples)
+    plotutils.show_pc(pc)
+    mlab.show()
+    return 0 
+
     
-    patch = np.load("temp/sample_77_1.npy")
+    patch = np.load("temp/sample_5_1.npy")
     plotutils.plot_patch_3D(patch)
     plt.show()
+    
+    
+import cluster_points
+def main_show_cluster():
+    dir_temp = "/media/hasan/DATA/shapenet/ref_points/"
+    dir_temp = "/home/hasan/workspace/Conv3D/temp_1100/ref_points/"
+    reader = cluster_points.ClusterPoints()
+    reader.load_dataset(dir_temp, bandwidth=0.00001)
+    print reader.labels
+    group = np.argwhere(reader.labels == 3)
+    group = group.reshape([group.shape[0]])
+    print "samples: ", group.shape[0]
+    for i in group:
+        pc = np.load(dir_temp + "sample_" + str(i) + ".npy")
+        plotutils.show_pc(pc)
+        mlab.show()
+    print group
+    return 0
     
     
 main_show_ply()
