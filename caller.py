@@ -1,12 +1,12 @@
 import matchTest
 
-train_rots = [20]
+train_rots = [40]
 #train_rots = [10, 20, 40, 80, 0]
 #num_samples = [101, 301, 501, 701, 1001]
-num_samples = [101, 301, 401]
-#num_samples = [101, 501, 1001]
-angles = [10, 20, 40, 90, 180]
-#angles = [10, 40, 180]
+#num_samples = [101, 301, 401]
+num_samples = [101, 501, 1001]
+#angles = [10, 20, 40, 90, 180]
+angles = [10, 40, 180]
 #drop_ratio = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 #drop_ratio = [0.2, 0.4, 0.6, 0.8, 1]
 drop_ratio = [1, 0.9, 0.8, 0.6, 0.4, 0.2]
@@ -27,7 +27,7 @@ for ratio in drop_ratio:
 #  print test
 #matchTest.main(tests[0])
 
-start = 30
+start = 44
 print len(tests)
 for j in range(start, len(tests)):
   print 'test.........', tests[j]

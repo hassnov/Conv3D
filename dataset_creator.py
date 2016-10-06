@@ -13,7 +13,7 @@ def main():
     #num_rotations = 40
     #BATCH_SIZE = 2
     patch_dim = 32
-    files_file = os.path.join(dir1, 'files_file.txt')
+    files_file = os.path.join(dir1, 'files_file3.txt')
     start_time = time.time()
     
     
@@ -21,10 +21,10 @@ def main():
     #reader = PlyReader3.PlyReader()
     reader.create_reader(files_file, 0,
                           add_noise=False, noise_std=0.1, sampling_algorithm=SampleAlgorithm.ISS_Detector,
-                          num_classes=100, relL=0.07, patch_dim=patch_dim,
+                          num_classes=1100, relL=0.07, patch_dim=patch_dim,
                           use_normals_pc=False, use_point_as_mean=False, flip_view_point=False)
     
-    reader.create_dataset(dir_temp='temp1/')
+    reader.create_dataset(dir_temp='temp_1100/')
     
     
     return 0
