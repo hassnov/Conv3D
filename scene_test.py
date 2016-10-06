@@ -42,10 +42,12 @@ def get_scene(base_path, scenes_dir, curr_i):
     model_trans_path = [""]*models_count
     for i in range(models_count):
         model_path[i] = base_path + map_section(config, "MODELS")['model_' + str(i)].strip('\"')
+        #root, ext = os.path.splitext(model_path[i])
+        #model_path[i] = root + '_0' + ext
         model_trans_path[i] = base_path + map_section(config, "MODELS")['model_' + str(i) + '_groundtruth'].strip('\"')  
     scene_path = base_path + map_section(config, "SCENE")['path'].strip('\"')
     root, ext = os.path.splitext(scene_path)
-    scene_path = root + '_0' + ext
+    scene_path = root + '_0.1' + ext
     
     return model_path, model_trans_path, scene_path
 
@@ -69,10 +71,10 @@ def main(args):
     rel_support_radii = float(args[7])
     patch_dim = 32
     relL = 0.07
-    for s in range(1, scenes_count):
+    for s in range(0, scenes_count):
         model_paths, model_trans_paths, scene_path = get_scene(base_path, scenes_dir, s)
         
-        
+        print "scene path: ", scene_path
         reader_scene = PlyReader.PlyReader()
         reader_scene.read_ply(scene_path, num_samples=num_samples, add_noise=False, sampling_algorithm=SampleAlgorithm.ISS_Detector)
         pc_diameter = utils.get_pc_diameter(reader_scene.data)
@@ -97,7 +99,7 @@ def main(args):
             reader_scene.sample_indices = -1
             
             print s
-            continue
+            #continue
             samples_count = reader.compute_total_samples(num_rotations)
             batches_per_epoch = samples_count/BATCH_SIZE
             
@@ -108,7 +110,7 @@ def main(args):
                 net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
                 net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
                 
-                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_3_nopool(net_x, 0.5, 500, train=False)
+                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3(net_x, 0.5, 465, train=False)
                 
                 #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
                 #loss += 5e-4 * regularizers
@@ -129,7 +131,7 @@ def main(args):
                 
                 # Create a saver and a summary op based on the tf-collection
                 saver = tf.train.Saver(tf.all_variables())
-                saver.restore(sess, os.path.join(models_dir,'bunny_'+ str(train_rotations) +'_5_3_500_filter40.ckpt'))   # Load previously trained weights
+                saver.restore(sess, os.path.join(models_dir,'11models_'+ str(train_rotations) +'_5_5_3_3_1100_clusters.ckpt'))   # Load previously trained weights
                 
                 print [v.name for v in tf.all_variables()]
                 b = 0
@@ -194,10 +196,10 @@ def main(args):
                 with open("results_scene.txt", "a") as myfile:
                     myfile.write('train rotations: ' + str(train_rotations) + '    num samples: ' + str(num_samples) + '    scene: ' + scene_name + "    correct: {0:.4f}".format(correct) + "    correct best 10: {0:.4f}".format(correct10) + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format(recall) + '\n')
                     myfile.close()
-                with open("precision.txt", "a") as myfile:
+                with open("precision_scene.txt", "a") as myfile:
                     myfile.write("{0:.4f}".format(correct) + '\n')
                     myfile.close()
-                with open("recall.txt", "a") as myfile:
+                with open("recall_scene.txt", "a") as myfile:
                     myfile.write("{0:.4f}".format(recall) + '\n')
                     myfile.close()
                 #plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches, N=200)
@@ -206,12 +208,20 @@ def main(args):
 #if __name__ == "__main__":
 #    main(sys.argv)
 
-"""
+
 main(["", r"/home/titan/hasan/workspace/Conv3d/retrieval_dataset/3D models/Stanford/Retrieval",
       "/home/titan/hasan/workspace/Conv3d/retrieval_dataset", 
-      "18", "40", "100", "1.1", "0.04"])
+      "18", "40", "100", "0.8", "0.04"])
+
+
+"""
+main(["", r"/home/titan/hasan/workspace/Conv3d/laser/3D models/Mian",
+      "/home/titan/hasan/workspace/Conv3d/laser", 
+      "51", "40", "100", "1.1", "0.04"])
 """
 
+"""
 main(["", r"/home/hasan/Downloads/UWA/3D models/Mian",
       "/home/hasan/Downloads/UWA", 
       "51", "40", "100", "1.1", "0.04"])
+"""
