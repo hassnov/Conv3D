@@ -180,7 +180,8 @@ class PlyReader:
                 rot2d = utils.angle_axis_to_rotation(theta, z_axis)
                 rot_points = utils.transform_pc(ref_points, rot2d)
                 #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
-                rz = r / 3
+                #rz = r / 3
+                rz = np.max ([np.max(ref_points[:, 2]), -np.min(ref_points[:, 2])])
                 #rz = r
                 for rot_pt in rot_points:
                                         
