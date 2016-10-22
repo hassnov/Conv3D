@@ -39,23 +39,41 @@ def conv2d_layer(name, input_data, shape, wd=0.1):
 
 
 def weight_variable(shape, name='weight'):
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    #initial = xavier_fc_init(shape)
+    #initial = tf.truncated_normal(shape, stddev=0.1)
+    initial = xavier_fc_init(shape)
     #return tf.get_variable(name=name , shape=shape, dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer(), trainable=True)
     return tf.Variable(initial, name=name)
 
-def conv3d_layer(name, input_data, shape, wd=0.1, strides=[1, 1, 1, 1, 1]):
+def conv3d_layer(name, input_data, shape, wd=0.1, strides=[1, 1, 1, 1, 1], padding='SAME'):
     with tf.variable_scope(name):
         # Variables created here will be named "name/weights", "name/biases".
-        #weights = tf.Variable(xavier_conv3_init(shape), name='weights')
-        weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
+        weights = tf.Variable(xavier_conv3_init(shape), name='weights')
+        #weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
         #weights = weight_variable(shape)
-        #if wd>0:
-        #    tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(weights), wd, name='decay'))
+        if wd>0:
+            tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(weights), wd, name='decay'))
         biases = tf.Variable(tf.zeros([shape[4]]), name="biases")
         #conv = tf.nn.conv2d(input_data, weights, [1, 1, 1, 1], padding='SAME')
         
-        conv = tf.nn.conv3d(input_data, weights, strides=strides, padding='SAME')    
+        conv = tf.nn.conv3d(input_data, weights, strides=strides, padding=padding)    
+        bias = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list())
+        layer = tf.nn.relu(bias, name=name)
+    #activation_summary(layer)
+    return layer, weights
+
+def conv3d_layer_transpose(name, input_data, weights, output_shape, wd=0.1, strides=[1, 1, 1, 1, 1], padding='SAME'):
+    with tf.variable_scope(name):
+        # Variables created here will be named "name/weights", "name/biases".
+        #weights = tf.Variable(xavier_conv3_init(shape), name='weights')
+        #weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
+        #weights = weight_variable(shape)
+        #if wd>0:
+        #    tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(weights), wd, name='decay'))
+        biases = tf.Variable(tf.zeros([weights.get_shape().as_list()[3]]), name="biases")
+        #conv = tf.nn.conv2d(input_data, weights, [1, 1, 1, 1], padding='SAME')
+        
+        #conv = tf.nn.conv3d(input_data, weights, strides=strides, padding='SAME')    
+        conv = tf.nn.conv3d_transpose(input_data, weights, output_shape=output_shape, strides=strides, padding=padding)
         bias = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list())
         layer = tf.nn.relu(bias, name=name)
     #activation_summary(layer)
@@ -75,6 +93,7 @@ def max_pool_2x2x2(x):
 def fc_layer(name, input_data, shape, wd=0.1):
     with tf.variable_scope(name):
         weights = tf.Variable(xavier_fc_init(shape), name='weights')
+        #weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
         if wd>0:
             tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(weights), wd, name='decay'))
         
@@ -104,6 +123,7 @@ def build_graph_3d_7_5_5_5(data, keep_prob, num_classes, train=True):
     data_shape = data.get_shape().as_list()
     print 'data shape: ', data_shape
     NUM_CHANNELS = data_shape[4]
+    
     conv0 = conv3d_layer("conv0",data,[7, 7, 7, NUM_CHANNELS, 64], strides=[1, 2, 2, 2, 1])
     #pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
     #pool1 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')
@@ -149,6 +169,60 @@ def build_graph_3d_7_5_5_5(data, keep_prob, num_classes, train=True):
         return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers 
     else:
         return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv0, conv1, h_fc0, h_fc1
+
+def build_graph_3d_5_5_3_3_3(data, keep_prob, num_classes, train=True):
+    data_shape = data.get_shape().as_list()
+    print 'data shape: ', data_shape
+    NUM_CHANNELS = data_shape[4]
+    #data_float = tf.to_float(data)
+    conv0 = conv3d_layer("conv0",data,[5, 5, 5, NUM_CHANNELS, 32], strides=[1, 2, 2, 2, 1])
+    #pool0 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool0')
+    #pool1 = tf.nn.max_pool3d(conv0, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')
+    
+    conv1 = conv3d_layer("conv1", conv0, [5, 5, 5, 32, 32])
+    
+    #pool2 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')
+    
+    conv2 = conv3d_layer("conv2", conv1, [3, 3, 3, 32, 64])
+    
+    conv3 = conv3d_layer("conv3", conv2, [3, 3, 3, 64, 64])
+    
+    conv4 = conv3d_layer("conv4", conv3, [3, 3, 3, 64, 32])
+    #kk = conv1.get_shape().as_list()[1]
+    #kk = kk / 4 
+    #pool44 = tf.nn.max_pool3d(conv1, ksize=[1, kk, kk, kk, 1], strides=[1, kk, kk, kk, 1], padding='SAME', name='pool1')
+    #pool1 = tf.nn.max_pool3d(conv1, ksize=[1, 2, 2, 2, 1], strides=[1, 2, 2, 2, 1], padding='SAME', name='pool1')   
+    #conv2 = conv2d_layer("conv2",pool1,[12, 12, 32, 256])
+    
+    shape = conv4.get_shape().as_list()
+    fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4];   # Resolve input dim into fc0 from conv3-filters
+    
+    #fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
+    W_fc0 = weight_variable([fc0_inputdim, 1024])
+    b_fc0 = bias_variable([1024])
+    h_pool2_flat = tf.reshape(conv4, [-1, fc0_inputdim])
+    h_fc0 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc0) + b_fc0)
+
+    
+    
+    W_fc1 = weight_variable([1024, 2048])
+    b_fc1 = bias_variable([2048])
+    h_fc1 = tf.nn.relu(tf.matmul(h_fc0, W_fc1) + b_fc1)
+    if train:
+        h_fc1 = tf.nn.dropout(h_fc1, keep_prob)
+    
+    #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
+    W_fc2 = weight_variable([2048, num_classes])
+    b_fc2 = bias_variable([num_classes])
+    
+    regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
+                    tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1) +
+                    tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc2))
+    if train:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers 
+    else:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv0, conv1, h_fc0, h_fc1
+
 
 
 def build_graph_3d_5_5_3_3(data, keep_prob, num_classes, train=True):

@@ -28,7 +28,7 @@ class ClusterPoints:
     tree = None
     
     l = None
-    relL=0.07    
+    relL=None    
     num_rotations = None
     patch_dim = None
     use_normals_pc = None
@@ -140,9 +140,10 @@ class ClusterPoints:
                 
         #TODO: better sampling
         print "sampling file: ", file_name
-        self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples, file_name=file_name, sampling_algorithm=self.sampling_algorithm)
-        self.samples = self.samples[0:num_samples]
-        self.sample_indices = self.sample_indices[0:num_samples]
+        self.samples, self.sample_indices = Sampler.sample(self.data, -1, min_num_point=-1, file_name=file_name, sampling_algorithm=self.sampling_algorithm)
+        #self.samples, self.sample_indices = Sampler.sample(self.data, -1, num_samples, file_name=file_name, sampling_algorithm=self.sampling_algorithm)
+        #self.samples = self.samples[0:num_samples]
+        #self.sample_indices = self.sample_indices[0:num_samples]
         
         self.tree = spatial.KDTree(self.data)
                 
@@ -190,9 +191,20 @@ class ClusterPoints:
         ref_points = utils.transform_pc(local_points, pose=local_pose)
         return ref_points, local_points
         
+    
+    def cluster_list_kmeans(self, eigen_list, k):
+        
+        km = KMeans(k).fit(eigen_list)
+        self.labels = km.labels_
+        labels_unique = np.unique(self.labels)
+        n_clusters_ = len(labels_unique)
+        self.num_clusters = n_clusters_
+        return self.labels, self.num_clusters
+        #bandwidth = estimate_bandwidth(eigen_list, quantile=0.5)
+    
     def cluster_list(self, eigen_list, bandwidth=0.00015):
         
-        #bandwidth = estimate_bandwidth(eigen_list, quantile=0.1)
+        #bandwidth = estimate_bandwidth(eigen_list, quantile=0.5)
         print "bandwidth: ", bandwidth
         ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
         ms.fit(eigen_list)
@@ -248,7 +260,7 @@ class ClusterPoints:
         
         #### saving data set after clustering
         print "creating dataset..."
-        X = np.zeros((1*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
+        X = np.zeros((1*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int8)
         #Y = np.zeros((1*  num_rotations), np.int32)
         global_i = 0 
         for file in self.files_list:
@@ -280,33 +292,37 @@ class ClusterPoints:
                 if global_i % 100 == 0:
                     print "sample: ", global_i
                 global_i += 1
-        self.save_meta(dir_temp)
+        self.save_meta(global_i, dir_temp)
     
-    def load_dataset(self, dir_temp='temp/', bandwidth=0.00015):
+    def load_dataset(self, dir_temp='temp/', bandwidth=0.00015, k=100):
         #self.num_clusters = np.load(dir_temp + "num_clusters.npy")
         meta = np.load(dir_temp + "meta.npy")
         eigen_list = np.load(dir_temp + "eigen_list.npy")
-        ms = self.cluster_list(eigen_list, bandwidth=bandwidth)
+        #ms = self.cluster_list(eigen_list, bandwidth=bandwidth)
+        self.cluster_list_kmeans(eigen_list, k=k)
         
-        #self.num_clusters = meta[0]
+        
         self.num_samples = meta[1]
+        #self.num_samples = 3440
+        #self.num_samples = 2000
+        #self.num_samples = 1400
         self.patch_dim = meta[2]
         
         #self.num_clusters = self.num_samples
         #self.labels = range(self.num_samples)
-        #print self.labels 
+        print self.labels 
         
         print [self.num_clusters, self.num_samples, self.patch_dim]
             
     
-    def save_meta(self, dir_temp='temp/'):
-        meta = [self.num_clusters, self.num_samples, self.patch_dim]
+    def save_meta(self, global_i, dir_temp='temp/'):
+        meta = [self.num_clusters, global_i, self.patch_dim]
         np.save(dir_temp + "meta", meta)
          
 
     def next_batch_3d_file(self, batch_size, num_rotations=40, dir_temp='temp/'):
-        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
-        Y = np.zeros((batch_size*  num_rotations), np.int32)
+        X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int8)
+        Y = np.zeros((batch_size*  num_rotations), np.int16)
         for point_number in range(batch_size):
             #for aug_num, _ in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
             for aug_num in range(num_rotations):

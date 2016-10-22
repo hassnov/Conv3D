@@ -39,6 +39,7 @@ def main(args):
     dir1 = os.path.dirname(os.path.realpath(__file__))
     #fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
     fileName = os.path.join(dir1, 'points/points_arm.npy')
+    #fileName = os.path.join(dir1, 'shrec15/D00001.npy')
     reader = PlyReader.PlyReader()
     reader_noise = PlyReader.PlyReader()
     
@@ -78,7 +79,7 @@ def main(args):
         net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
         net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
         
-        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3(net_x, 0.5, 465, train=False)
+        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3(net_x, 0.5, 691, train=False)
         
         #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         #loss += 5e-4 * regularizers
@@ -93,13 +94,13 @@ def main(args):
 
         # Create initialization "op" and run it with our session 
         init = tf.initialize_all_variables()
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.12)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.15)
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
         sess.run(init)
         
         # Create a saver and a summary op based on the tf-collection
         saver = tf.train.Saver(tf.all_variables())
-        saver.restore(sess, os.path.join(models_dir,'11models_'+ str(train_rotations) +'_5_5_3_3_1100_clusters.ckpt'))   # Load previously trained weights
+        saver.restore(sess, os.path.join(models_dir,'32models_'+ str(train_rotations) +'_5_5_3_3_3_3440_clusters_fpfh.ckpt'))   # Load previously trained weights
         
         print [v.name for v in tf.all_variables()]
         b = 0
