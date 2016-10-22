@@ -365,11 +365,29 @@ def main_noise():
     mlab.show()
 
 def main_show_ply():
-    pc = utils.read_ply('/home/hasan/Downloads/shrec15/D00008.ply')
+    
+    for i in range(10):
+        sample = 'sample_5' + str(i)
+        pc = np.load('/home/hasan/workspace/Conv3D/temp_7500/ref_points/' + sample + '.npy')
+        plotutils.show_pc(pc)
+        mlab.show()
+            
+            
+        patch = np.load('/home/hasan/workspace/Conv3D/temp_7500/' + sample + '_1.npy')
+        plotutils.plot_patch_3D(patch)
+        plt.show()
+    
+    return 0
+    #for i in range(100, 112):
+    #pc = utils.read_ply('/home/hasan/workspace/Conv3D/temp_7500/ref_points/sample_99.npy')
+    for i in range(0, 6400, 100):
+        pc = np.load('/home/hasan/workspace/Conv3D/temp_7500/ref_points/sample_' + str(i) + '.npy')
+        plotutils.show_pc(pc)
+        mlab.show()
     #samples, _ = Sampler.sample(pc, -1, 100000, "", pose=-1, sampling_algorithm=SampleAlgorithm.Uniform)
     #np.save("points/lucysample", samples)
-    plotutils.show_pc(pc)
-    mlab.show()
+    
+    
     return 0 
 
     
@@ -394,6 +412,96 @@ def main_show_cluster():
         mlab.show()
     print group
     return 0
+
+
+
+#from mpl_toolkits.mplot3d import Axes3D
+#from matplotlib.ticker import NullFormatter
+from matplotlib.offsetbox import AnnotationBbox, OffsetImage
+from PIL import Image
+
+from sklearn import manifold
+from sklearn.cluster import MeanShift
+from sklearn.cluster import KMeans
+import cv2
+
+def cluster_list(eigen_list, bandwidth=0.00015):
     
     
-main_show_ply()
+    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+    ms.fit(eigen_list)
+    labels = ms.labels_
+    cluster_centers = ms.cluster_centers_
+    
+    labels_unique = np.unique(labels)
+    n_clusters_ = len(labels_unique)
+    print("number of estimated clusters : %d" % n_clusters_)
+    return labels, n_clusters_
+
+
+def cluster_list_kmeans(eigen_list, k):
+    km = KMeans(k).fit(eigen_list)
+    return km.labels_, []
+
+def main_tsne():
+    fpfh_list = np.load("/home/hasan/workspace/Conv3D/temp_32/eigen_list.npy")
+    #labels = np.load("labels.npy")
+    #labels, _ = cluster_list(fpfh_list, bandwidth=0.001)
+    labels, _ = cluster_list_kmeans(fpfh_list, k=300)
+    #labels = np.load("labels.npy")
+    #np.save("labels", labels)
+    #model = manifold.TSNE(n_components=2, random_state=0)
+    t0 = time.time()
+    print "tsne running..."
+    Y = np.load("tsne.npy")
+    Y = Y
+    print Y
+    #Y = model.fit_transform(fpfh_list)
+    #np.save("tsne", Y)
+    t = time.time() - t0
+    print("t-SNE: %.2g sec" % t)
+    
+    #fig = plt.gcf()
+    fig = plt.Figure()
+    fig.clf()
+    ax = plt.subplot(111)
+    for sample_i, pt in enumerate(Y):
+        if labels[sample_i] != 0:
+            continue
+        pix = plt.imread("/media/hasan/DATA1/shapenet/temp_32/screenshots/sample_" + str(sample_i) + ".png")
+        #cv2.imshow("sample", pix)
+        #cv2.waitKey()
+        imagebox = OffsetImage(pix, zoom=0.25)
+        xy = pt
+        ab = AnnotationBbox(imagebox, xy, xycoords='data', frameon=False)                                  
+        ax.add_artist(ab)
+        #off = 1
+        #plt.imshow(pix, extent=[xy[0] - off, xy[0] + off, xy[1] - off, xy[1] + off])        
+    
+    ax.grid(True)
+    ax.scatter(Y[:, 0], Y[:, 1], 20, labels)
+    plt.draw()
+    #plt.savefig("plots/tsne.pdf", format='pdf')
+    plt.show()
+    return 0
+
+    plt.scatter(Y[:, 0], Y[:, 1], 20, labels)
+    plt.axis('tight')
+    plt.show()
+    return 0    
+
+
+def save_clusters_images():
+    #num_samples = 3443
+    for i in range(3443):
+        sample = np.load("/home/hasan/workspace/Conv3D/temp_32/ref_points/sample_" + str(i) + ".npy")
+        plotutils.show_pc(sample)
+        mlab.savefig("/media/hasan/DATA1/shapenet/temp_32/screenshots/sample_" + str(i) + ".png", size=[200,200], figure=mlab.gcf())
+        #mlab.savefig("/home/hasan/workspace/Conv3D/temp_32/screenshots/sample_" + str(i) + ".png", size=[200,200], figure=mlab.gcf())
+        mlab.clf()
+        print "sample: ", i
+        #mlab.show()
+    return 0 
+
+
+main_tsne()
