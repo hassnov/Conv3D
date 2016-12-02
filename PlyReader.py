@@ -19,6 +19,7 @@ from scipy import ndimage
 class PlyReader:
     
     data = None
+    normals = None
     samples = None
     sample_indices = None
     num_samples = None
@@ -37,7 +38,7 @@ class PlyReader:
 
 
     def read_ply(self, file_name, num_samples=1000, sample_class_start=0, add_noise =False,
-                  noise_prob=0.3, noise_factor=0.02, sampling_algorithm=SampleAlgorithm.Uniform,
+                  noise_prob=0.3, noise_factor=0.02, noise_std=0.1, sampling_algorithm=SampleAlgorithm.Uniform,
                   rotation_axis=[0, 0, 1], rotation_angle=0):
          
         root, ext = os.path.splitext(file_name)
@@ -50,8 +51,23 @@ class PlyReader:
         else:
             points = np.load(root + ".npy")
         
+        #load normals
+        if os.path.isfile(root + "_normals" + ".ply"):
+            if not os.path.isfile(root + "_normals" + ".npy"):
+                ply1 = PlyData.read(root + "_normals" + ".ply")
+                vertex = ply1['vertex']
+                (nx, ny, nz) = (vertex[t] for t in ('nx', 'ny', 'nz'))
+                self.normals = np.asarray(zip(nx.ravel(), ny.ravel(), nz.ravel()))
+                np.save(root + "_normals" + ".npy", self.normals)
+            else:
+                self.normals = np.load(root + "_normals" + ".npy")
+        
         if add_noise:
-            self.data = utils.add_noise(points, prob=noise_prob, factor=noise_factor)
+            print "adding noise to model.."
+            mr = utils.model_resolution(np.array(points))
+            #mr = 0.404
+            print "model resolution: ", mr
+            self.data = utils.add_noise_normal(np.array(points), mr, noise_std)
         else:
             self.data = np.asarray(points)
         rot = utils.angle_axis_to_rotation(rotation_angle, rotation_axis)
@@ -64,6 +80,7 @@ class PlyReader:
         self.sample_class_start = sample_class_start
         self.sample_class_current = sample_class_start
         self.num_samples = self.samples.shape[0]
+        print "num samples: ", self.num_samples
         logging.basicConfig(filename='example.log',level=logging.DEBUG)
         return self.data
     
@@ -119,10 +136,11 @@ class PlyReader:
             return self.next_batch_3d(batch_size, num_rotations, num_classes)
         
     
-    def next_batch_3d(self, batch_size, num_rotations=20, num_classes=-1):
+    def next_batch_3d(self, batch_size, num_rotations=20, num_classes=-1, r_in=-1, increment=True):
         if num_classes == -1:
             num_classes = self.num_samples
-        logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % num_classes) )
+        #logging.info('index: ' + str(self.index) + '    current_label: ' + str(self.sample_class_current % num_classes) )
+        curr_index = self.index
         if self.index + batch_size < self.samples.shape[0]:
             pc_samples = self.samples[self.index:self.index+batch_size]
             self.index += batch_size
@@ -135,8 +153,13 @@ class PlyReader:
         X = np.zeros((batch_size*  num_rotations, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int32)
         Y = np.zeros((batch_size*  num_rotations), np.int32)
         
-        
         r = self.l# / np.sqrt(2)
+        if r_in > 0:
+            r = r_in
+        #if relR > 0:
+        #    r = utils.get_pc_diameter(self.data)*relR
+            
+        curr_sample_class_current = self.sample_class_current
         #r = self.l / np.sqrt(2)
         for point_number, samplept in enumerate(pc_samples):
             i = self.tree.query_ball_point(samplept[0:3], r=r)
@@ -154,9 +177,15 @@ class PlyReader:
                 mu[1] = np.sum(local_points[:, 1]) / point_count
                 mu[2] = np.sum(local_points[:, 2]) / point_count
             if (self.use_normals_pc) and (samplept.shape == 6):
-                nr = samplept[3:6]
+            #if (self.use_normals_pc):
+                #nr = samplept[3:6]
+                min_d = np.argmin(distances)
+                #if distances[min_d] > 0:
+                #    raise
+                nr = self.normals[indices[min_d]] 
                 #TODO: get_weighted_normal
             else:# calc normals
+                #raise
                 cov_mat = utils.build_cov(local_points, mean=mu)
                 w, v = LA.eigh(cov_mat)
                 min_id = np.argmin(w)
@@ -174,6 +203,8 @@ class PlyReader:
             ref_points = utils.transform_pc(local_points, pose=local_pose)
             #plotutils.show_pc(ref_points, np.zeros((1, 3)), mode='sphere', scale_factor=0.001)
             #mlab.show()
+            #rz = np.max ([np.max(ref_points[:, 2]), -np.min(ref_points[:, 2])])
+            rz = r
             for aug_num, theta in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
                 if aug_num == num_rotations:
                     break
@@ -181,21 +212,43 @@ class PlyReader:
                 rot_points = utils.transform_pc(ref_points, rot2d)
                 #patch = np.zeros((self.patch_dim, self.patch_dim, self.patch_dim), dtype='int32')
                 #rz = r / 3
-                rz = np.max ([np.max(ref_points[:, 2]), -np.min(ref_points[:, 2])])
-                #rz = r
+                
+                xs1 = np.asarray(((rot_points[:, 0] + r) / (2 * r))*(self.patch_dim - 1), np.int16)
+                ys1 = np.asarray(((rot_points[:, 1] + r) / (2 * r))*(self.patch_dim - 1), np.int16)
+                zs1 = np.asarray(((rot_points[:, 2] + rz) / (2 * rz))*(self.patch_dim - 1), np.int16)
+                
+                above32 = np.logical_and (np.logical_and(xs1<self.patch_dim, ys1<self.patch_dim), zs1<self.patch_dim) 
+                xs = xs1[above32]
+                ys = ys1[above32]
+                zs = zs1[above32]
+                X[point_number*num_rotations + aug_num, xs, ys, zs, 0] = 1
+                Y[point_number*num_rotations + aug_num] = self.sample_class_current % num_classes
+                continue
+                try:
+                    X[point_number*num_rotations + aug_num, xs, ys, zs, 0] = 1
+                except IndexError as inst:
+                    #print ("index out of range")
+                    print inst.args
+                    for rot_pt in rot_points:               
+                        x = int(((rot_pt[0] + r) / (2 * r))*(self.patch_dim - 1))
+                        y = int(((rot_pt[1] + r) / (2 * r))*(self.patch_dim - 1))
+                        z = int(((rot_pt[2] + rz) / (2 * rz))*(self.patch_dim - 1))
+                        if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
+                            X[point_number*num_rotations + aug_num, x, y, z, 0] = 1
+                except Exception as inst:
+                    print ("Unexpected exception: ", type(inst))
+                    print(inst.args)
+                    print(inst)
+                    #print ("Exception message: ", inst)
+                    raise
+                
+                continue          
                 for rot_pt in rot_points:
                                         
                     x = int(((rot_pt[0] + r) / (2 * r))*(self.patch_dim - 1))
                     y = int(((rot_pt[1] + r) / (2 * r))*(self.patch_dim - 1))
                     z = int(((rot_pt[2] + rz) / (2 * rz))*(self.patch_dim - 1))
                     
-                    #x = int(((rot_pt[0] + self.l) / (2 * self.l))*(self.patch_dim - 1))
-                    #y = int(((rot_pt[1] + self.l) / (2 * self.l))*(self.patch_dim - 1))
-                    #z = int(((rot_pt[2] + self.l) / (2 * self.l))*(self.patch_dim - 1))
-                    
-                    #x = int(self.patch_dim*(rot_pt[0] / self.l) + self.patch_dim / 2)
-                    #y = int(self.patch_dim*(rot_pt[1] / self.l) + self.patch_dim / 2)
-                    #z = int(self.patch_dim*(rot_pt[2] / self.l) + self.patch_dim / 2)
                     if (z >= 0) and (z < self.patch_dim) and (y >= 0) and (y < self.patch_dim) and (x >= 0) and (x < self.patch_dim):
                         #patch[x, y, z] = 1
                         #X[point_number*num_rotations + aug_num, x + self.patch_dim * (y + self.patch_dim * z)] = 1
@@ -206,6 +259,9 @@ class PlyReader:
             #plt.show()
             #TODO: start from start not 0 with sample_class_current                
             self.sample_class_current += 1
+        if not increment:
+            self.sample_class_current = curr_sample_class_current
+            self.index = curr_index
         return X, Y
 
 
@@ -370,6 +426,7 @@ class PlyReader:
         
         r = self.l #/ np.sqrt(2)
         rz = r / 3
+        rz = r
         for point_number, samplept in enumerate(pc_samples):
             i = self.tree.query_ball_point(samplept[0:3], r=r)
             distances, indices = self.tree.query(samplept[0:3], k=len(i))
