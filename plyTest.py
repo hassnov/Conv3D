@@ -366,17 +366,34 @@ def main_noise():
 
 def main_show_ply():
     
-    for i in range(10):
-        sample = 'sample_5' + str(i)
-        pc = np.load('/home/hasan/workspace/Conv3D/temp_7500/ref_points/' + sample + '.npy')
-        plotutils.show_pc(pc)
-        mlab.show()
-            
-            
-        patch = np.load('/home/hasan/workspace/Conv3D/temp_7500/' + sample + '_1.npy')
+    
+    for i in range(0, 540, 45):
+        patch = np.load("/home/hasan/workspace/Conv3D/temp_9/sample_1000_{0}.npy".format(i))
+    #recon = np.load('/home/hasan/workspace/Conv3D/temp_93/recon/sample_1111_179.npy')
         plotutils.plot_patch_3D(patch)
         plt.show()
     
+    return 0
+    for i in range(18):
+        #pc = np.load("/home/hasan/workspace/Conv3D/scenes/Scene{0}_0.1.ply".format(i))
+        pc = utils.read_ply("/home/hasan/workspace/Conv3D/scenes/Scene{0}_0.1.ply".format(i))
+        mr = utils.model_resolution(pc)
+        print "shape: ", pc.shape, "    mr: ", mr
+        plotutils.show_pc(pc)
+        
+        
+    return 0
+    
+
+    
+    
+    return 0
+    
+    for i in range(0, 360, 60):
+        sample = 'sample_4817_' + str(i)
+        patch = np.load('/home/hasan/workspace/Conv3D/temp_93/' + sample + '.npy')
+        plotutils.plot_patch_3D(patch)
+        plt.show()
     return 0
     #for i in range(100, 112):
     #pc = utils.read_ply('/home/hasan/workspace/Conv3D/temp_7500/ref_points/sample_99.npy')
@@ -445,18 +462,20 @@ def cluster_list_kmeans(eigen_list, k):
 
 def main_tsne():
     fpfh_list = np.load("/home/hasan/workspace/Conv3D/temp_32/eigen_list.npy")
+    #codes = np.load("temp_32/codes")
     #labels = np.load("labels.npy")
     #labels, _ = cluster_list(fpfh_list, bandwidth=0.001)
-    labels, _ = cluster_list_kmeans(fpfh_list, k=300)
-    #labels = np.load("labels.npy")
+    #labels, _ = cluster_list_kmeans(fpfh_list, k=300)
+    labels = np.load("temp_32/labels_train1000.npy")
     #np.save("labels", labels)
-    #model = manifold.TSNE(n_components=2, random_state=0)
+    
     t0 = time.time()
     print "tsne running..."
-    Y = np.load("tsne.npy")
-    Y = Y
-    print Y
-    #Y = model.fit_transform(fpfh_list)
+    #Y = np.load("tsne.npy")
+    #print Y
+    
+    model = manifold.TSNE(n_components=2, random_state=0)
+    Y = model.fit_transform(fpfh_list)
     #np.save("tsne", Y)
     t = time.time() - t0
     print("t-SNE: %.2g sec" % t)
@@ -490,6 +509,17 @@ def main_tsne():
     plt.show()
     return 0    
 
+def autoencoder_result():
+    i = 0
+    sample = np.load("/home/hasan/workspace/Conv3D/temp_1100/sample_" + str(i) + "_12.npy")
+    recon = np.load("/home/hasan/workspace/Conv3D/temp_1100/recon/sample_" + str(i) + "_12.npy")
+    recon [recon > 0.5] = 1
+    recon [recon <= 0.5] = 0
+    print np.sum(np.sqrt(np.abs(recon-sample)))
+    plotutils.plot_patch_3D(sample, "sample")
+    plotutils.plot_patch_3D(recon, "recon")
+    plt.show()
+    
 
 def save_clusters_images():
     #num_samples = 3443
@@ -504,4 +534,13 @@ def save_clusters_images():
     return 0 
 
 
-main_tsne()
+def show_tsdf():
+    for i in range(10):
+        patch = np.load("/home/hasan/workspace/Conv3D/temp_5tsdf/sample_{0}_0.npy".format(i))
+        #recon = np.load('/home/hasan/workspace/Conv3D/temp_93/recon/sample_1111_179.npy')
+        plotutils.plot_patch_TSDF(patch, cutoff=0.2, name='tsdf')
+        mlab.show()
+
+main_show_ply()
+    
+        
