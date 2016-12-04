@@ -37,8 +37,11 @@ def main(args):
     patch_dim = 32
     relL = 0.07
     dir1 = os.path.dirname(os.path.realpath(__file__))
-    #fileName = os.path.join(dir1, 'plytest/bun_zipper.ply')
-    fileName = os.path.join(dir1, 'points/points_arm.npy')
+    fileName = os.path.join(dir1, 'plys/Armadillo_vres2_small_scaled.ply')
+    #fileName = os.path.join(dir1, 'points/points_arm.npy')
+    #fileName = os.path.join(dir1, 'points/points_bunny.npy')
+    #fileName = os.path.join(dir1, 'plys/cheff.ply')
+    
     #fileName = os.path.join(dir1, 'shrec15/D00001.npy')
     reader = PlyReader.PlyReader()
     reader_noise = PlyReader.PlyReader()
@@ -46,19 +49,24 @@ def main(args):
     reader.read_ply(fileName, num_samples=num_samples, add_noise=False, sampling_algorithm=SampleAlgorithm.ISS_Detector)
     pc_diameter = utils.get_pc_diameter(reader.data)
     l = relL*pc_diameter
-    reader.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50)
+    reader.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=False)
     #noise_prob = float(args[1])
     #noise_factor = float(args[2])
     noise_prob = 0.1
     noise_factor = 0.01
     #print 'noise prob: ', noise_prob, '	noise factor: ', noise_factor
-
-    reader_noise.read_ply(fileName, num_samples=num_samples, add_noise=False, noise_prob=noise_prob, noise_factor=noise_factor,
+    #angle = 0
+    reader_noise.read_ply(fileName, num_samples=num_samples, add_noise=True, noise_std=0.5, noise_prob=noise_prob, noise_factor=noise_factor,
                            rotation_axis=[0, 0, 1], rotation_angle=utils.rad(angle), 
                            sampling_algorithm=SampleAlgorithm.ISS_Detector)
     reader_noise.set_variables(l=l, patch_dim=patch_dim)
-    #reader_noise.samples = reader_noise.data[reader.sample_indices]
-
+    #reader_noise.samples = reader_noise.data[numpy.asarray(reader.sample_indices, numpy.int)]
+    #reader_noise.samples = reader.samples
+    
+    diff_pc = sum(abs(reader.data - reader_noise.data))
+    print "diff_pc: ", diff_pc
+    diff_samples = sum(abs(reader.samples - reader_noise.samples))
+    print "diff_samples: ", diff_samples
     
     samples_count = reader.compute_total_samples(num_rotations)
     batches_per_epoch = samples_count/BATCH_SIZE
@@ -79,7 +87,8 @@ def main(args):
         net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
         net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
         
-        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3(net_x, 0.5, 691, train=False)
+        #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 18222, train=False)
+        logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 3057, train=False)
         
         #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         #loss += 5e-4 * regularizers
@@ -100,7 +109,9 @@ def main(args):
         
         # Create a saver and a summary op based on the tf-collection
         saver = tf.train.Saver(tf.all_variables())
-        saver.restore(sess, os.path.join(models_dir,'32models_'+ str(train_rotations) +'_5_5_3_3_3_3440_clusters_fpfh.ckpt'))   # Load previously trained weights
+        #saver.restore(sess, os.path.join(models_dir,'32models_'+ str(train_rotations) +'_5_5_3_3_3443_ae2000_kmeans_copy.ckpt'))   # Load previously trained weights
+        saver.restore(sess, os.path.join(models_dir,'5models_360aug_5_5_3_3_3_3057_noise_nr_NoClusters_copy.ckpt'))   # Load previously trained weights
+        #saver.restore(sess, os.path.join(models_dir,'5models_180aug_5_5_3_3_752_NoClusters.ckpt'))   # Load previously trained weights
         
         print [v.name for v in tf.all_variables()]
         b = 0
@@ -109,61 +120,74 @@ def main(args):
         p1_shape = pool1.get_shape().as_list()
         f0_shape = h_fc0.get_shape().as_list()
         f1_shape = h_fc1.get_shape().as_list()
+        samples_count_mod_patch = reader.samples.shape[0] - reader.samples.shape[0] % BATCH_SIZE
         c1_1s = numpy.zeros((reader.samples.shape[0], c1_shape[1] * c1_shape[2] * c1_shape[3] * c1_shape[4]), dtype=numpy.float32)
         p1_1s = numpy.zeros((reader.samples.shape[0], p1_shape[1] * p1_shape[2] * p1_shape[3] * p1_shape[4]), dtype=numpy.float32)
-        f0_1s = numpy.zeros((reader.samples.shape[0], f0_shape[1]), dtype=numpy.float32)
+        f0_1s = numpy.zeros((samples_count_mod_patch, f0_shape[1]), dtype=numpy.float32)
         f1_1s = numpy.zeros((reader.samples.shape[0], f1_shape[1]), dtype=numpy.float32)
         
         c1_2s = numpy.zeros((reader.samples.shape[0], c1_shape[1] * c1_shape[2] * c1_shape[3] * c1_shape[4]), dtype=numpy.float32)
         p1_2s = numpy.zeros((reader.samples.shape[0], p1_shape[1] * p1_shape[2] * p1_shape[3] * p1_shape[4]), dtype=numpy.float32)
-        f0_2s = numpy.zeros((reader.samples.shape[0], f0_shape[1]), dtype=numpy.float32)
+        f0_2s = numpy.zeros((samples_count_mod_patch, f0_shape[1]), dtype=numpy.float32)
         f1_2s = numpy.zeros((reader.samples.shape[0], f1_shape[1]), dtype=numpy.float32)
         
         #for b in range(100):
         for b in range(samples_count // BATCH_SIZE):
             start_time = time.time()
             X, Y= reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations)
-            patch_time = time.time() - start_time
+            #numpy.save('temp_bunny/corres1/testsample_' + str(reader.sample_class_current), X)
+            #Xr2, Yr2= reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, relR=0.05)
+            #X = (Xr1 + Xr2)/2            
+            #assert(numpy.all(Yr1==Yr2))
+            #Y = Yr1
+            
             X2, Y2= reader_noise.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations)
+            #numpy.save('temp_bunny/corres1/testcorres_' + str(reader_noise.sample_class_current), X2)
+            #X2r2, Y2r2= reader_noise.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, relR=0.05)
+            #X2 = (X2r1 + X2r2)/2
+            #assert(numpy.all(Y2r1==Y2r2))
+            #Y2 = Y2r1
+            patch_time = time.time() - start_time
             
             i = b*num_rotations*BATCH_SIZE
             i1 = (b + 1)*num_rotations*BATCH_SIZE
             start_eval = time.time()
-            c1_1, p1_1, f0_1, f1_1 = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X, net_y: Y})
+            f0_1 = sess.run([h_fc0], feed_dict={net_x:X, net_y: Y})
             eval_time = time.time() - start_eval
-            c1_1s[i:i1] = numpy.reshape(c1_1, (samples_per_batch,c1_1s.shape[1]))
-            p1_1s[i:i1] = numpy.reshape(p1_1, (samples_per_batch, p1_1s.shape[1]))
+            #c1_1s[i:i1] = numpy.reshape(c1_1, (samples_per_batch,c1_1s.shape[1]))
+            #p1_1s[i:i1] = numpy.reshape(p1_1, (samples_per_batch, p1_1s.shape[1]))
             f0_1s[i:i1] = numpy.reshape(f0_1, (samples_per_batch, f0_1s.shape[1]))
-            f1_1s[i:i1] = numpy.reshape(f1_1, (samples_per_batch, f1_1s.shape[1]))
+            #f1_1s[i:i1] = numpy.reshape(f1_1, (samples_per_batch, f1_1s.shape[1]))
             
-            c1_2, p1_2, f0_2, f1_2 = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X2, net_y: Y2})
-            c1_2s[i:i1] = numpy.reshape(c1_2, (samples_per_batch, c1_2s.shape[1]))
-            p1_2s[i:i1] = numpy.reshape(p1_2, (samples_per_batch, p1_2s.shape[1]))
+            f0_2= sess.run([h_fc0], feed_dict={net_x:X2, net_y: Y2})
+            #c1_2s[i:i1] = numpy.reshape(c1_2, (samples_per_batch, c1_2s.shape[1]))
+            #p1_2s[i:i1] = numpy.reshape(p1_2, (samples_per_batch, p1_2s.shape[1]))
             f0_2s[i:i1] = numpy.reshape(f0_2, (samples_per_batch, f0_2s.shape[1]))
-            f1_2s[i:i1] = numpy.reshape(f1_2, (samples_per_batch, f1_2s.shape[1]))
+            #f1_2s[i:i1] = numpy.reshape(f1_2, (samples_per_batch, f1_2s.shape[1]))
             duration = time.time() - start_time
-            if b % 10 == 0:
-                matches = utils.match_des(f1_1s[i:i1], f1_2s[i:i1], ratio)
-                utils.correct_matches(reader.samples[i:i1], reader_noise.samples[i:i1], matches, N=samples_count)
+            #if b % 10 == 0:
+            #    matches = utils.match_des(f0_1s[i:i1], f0_2s[i:i1], ratio)
+            #    utils.correct_matches(reader.samples[i:i1], reader_noise.samples[i:i1], matches, N=samples_count)
             
             
             print "point:", b, "  patch time: {0:.2f}".format(patch_time) ,"	eval time: {0:.2f}".format(eval_time), "   Duration (sec): {0:.2f}".format(duration)#, "    loss:    ", error, "    Accuracy: ", acc #, "   Duration (sec): ", duration
         print 'total'
-        matches = utils.match_des(f1_1s, f1_2s, ratio)
+        matches = utils.match_des(f0_1s, f0_2s, ratio)
+        #numpy.save('temp_bunny/corres1/matches', matches)
         print 'num_matches: ', len(matches)
         correct, wrong = utils.correct_matches(reader.samples, reader_noise.samples, matches, N=100000)
         best10 = num_samples//10
         print 'N=', best10
         print 'total sample count', reader.samples.shape[0]
         correct10, wrong10 = utils.correct_matches(reader.samples, reader_noise.samples, matches, N=best10)
-        recall = (len(matches)/float(reader.samples.shape[0])*correct)
-        with open("results.txt", "a") as myfile:
+        recall = (len(matches)/float(samples_count_mod_patch))*correct
+        with open("resultsbunny.txt", "a") as myfile:
             myfile.write('train rotations: ' + str(train_rotations) + '	num samples: ' + str(num_samples) + '	angle: ' + str(angle) + "	correct: {0:.4f}".format(correct) + "	correct best 10: {0:.4f}".format(correct10) + '	i: ' + args[4] + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format(recall) + '\n')
             myfile.close()
-        with open("precision.txt", "a") as myfile:
+        with open("precisionbunny.txt", "a") as myfile:
             myfile.write("{0:.4f}".format(correct) + '\n')
             myfile.close()
-        with open("recall.txt", "a") as myfile:
+        with open("recallbunny.txt", "a") as myfile:
             myfile.write("{0:.4f}".format(recall) + '\n')
             myfile.close()
         #plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches, N=200)

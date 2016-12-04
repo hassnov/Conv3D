@@ -55,6 +55,12 @@ class Sampler:
         pc_iss = utils.transform_pc(pc_iss, pose)
         
         #min_num_point = min(int(pc_iss.shape[0] / 10), 200)
+        if min_num_point < 0:
+            #min_num_point = min(int(pc_iss.shape[0] / 10), 200)
+            #min_num_point = min(int(pc_iss.shape[0] / 1), 200)
+            #min_num_point = min(int(pc_iss.shape[0] / 1), 500)
+            min_num_point = int(pc_iss.shape[0] / 1) 
+            
         if min_num_point >= pc_iss.shape[0]:
             return pc_iss, indices
         

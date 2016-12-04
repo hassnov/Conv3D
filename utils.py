@@ -174,7 +174,7 @@ def model_resolution(pc):
     npoints = 0
     tree = spatial.KDTree(pc) 
     for p in pc:
-        if not np.isfinite(p):
+        if not np.all(np.isfinite(p)):
             continue
         dists, indices = tree.query(p[0:3], k=2)
         if len(indices == 2):
@@ -185,18 +185,13 @@ def model_resolution(pc):
         return res / float(npoints)
     return 0
     
-def add_noise_normal (pc, std=0.1):
-    pc1 =pc
-    xs = pc1[:, 0]
-    ys = pc1[:, 1]
-    zs = pc1[:, 2]
-    noisex = np.random.normal(0, std, pc.shape[0])
-    noisey = np.random.normal(0, std, pc.shape[0])
-    noisez = np.random.normal(0, std, pc.shape[0])
-    xs += noisex
-    ys += noisey
-    zs += noisez
-    return np.asarray(zip(xs.ravel(), ys.ravel(), zs.ravel()))
+def add_noise_normal (pc, mr, std=0.1):
+    noise = np.random.normal(0, std, pc.shape)
+    #mr = model_resolution(pc)
+    #print "model_resolution: ", mr
+    noise = noise*(mr)
+    pc1 = pc + noise
+    return pc1
     
     
 def add_noise(pc, prob=0.3, factor=0.02):
@@ -258,34 +253,61 @@ def correct_matches(samples1, samples2, matches, tube_radius=0.0003, N=50, ignor
     return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
 
 
+def num_corresponding_features(samples_model, samples_scene, full_scene, pose, support_radii=0.01):
+    tree = spatial.KDTree(samples_scene)
+    tree_full = spatial.KDTree(full_scene)
+    samples_model_trans = transform_pc(samples_model, pose)
+    num_cf = 0
+    scene_corres = []
+    model_corres = []
+    for sample_model_i, sample_model in enumerate(samples_model_trans):
+        d, i = tree.query(sample_model, k=1)
+        d_full, i_full = tree_full.query(sample_model, k=1)
+        
+        point1 = samples_scene[i]
+        point_full = full_scene[i_full]
+        dist_full =  np.linalg.norm(point_full - sample_model)
+        #proin1_trans = transform_pc(np.reshape(point1, [1, point1.shape[0]]), pose)
+        dist = np.linalg.norm(point1 - sample_model)
+        if dist < (support_radii / 2) and dist_full < (support_radii / 20):
+        #if dist < (support_radii / 2):
+            model_corres.append(samples_model[sample_model_i])
+            scene_corres.append(point1)
+            num_cf +=1
+    return num_cf, np.asarray(model_corres), np.asarray(scene_corres)
+    
+
 def correct_matches_support_radii(samples1, samples2, matches, pose, N=50, ignore_size=True, support_radii=0.01):
     if(len(matches)==0):
         return 0, 0
     if not ignore_size:
         assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
-    assert(samples1.shape[0] == samples2.shape[0])
+        assert(samples1.shape[0] == samples2.shape[0])
     matchespart = matches
-    if matches.shape[0] > N:
-        matchespart = matches[0:N,...]
-        samples11 = samples1[matches[0:N,0].astype(dtype=np.int16)]
-        samples22 = samples2[matches[0:N,1].astype(dtype=np.int16)]
-    else:
-        samples11 = samples1[matches[:,0].astype(dtype=np.int16)]
-        samples22 = samples2[matches[:,1].astype(dtype=np.int16)]
-    assert (samples11.shape == samples22.shape)
+    #if matches.shape[0] > N:
+    #    matchespart = matches[0:N,...]
+    #    samples11 = samples1[matches[0:N,0].astype(dtype=np.int16)]
+    #    samples22 = samples2[matches[0:N,1].astype(dtype=np.int16)]
+    #else:
+    #    samples11 = samples1[matches[:,0].astype(dtype=np.int16)]
+    #    samples22 = samples2[matches[:,1].astype(dtype=np.int16)]
+    #assert (samples11.shape == samples22.shape)
     i = 0
     correct = 0
     wrong = 0
+    match_res = np.zeros((matchespart.shape[0],), np.bool)
     #for i in range(samples11.shape[0]):
-    for match in matchespart:
-        if correct_match(samples1[int(match[0])], samples2[int(match[1])], pose, support_radii):
+    for match_i, match in enumerate(matchespart):
+        if correct_match(samples2[int(match[1])], samples1[int(match[0])], pose, support_radii):
             correct += 1
+            match_res[match_i] = True
         else:
             wrong += 1
+            match_res[match_i] = False
         i += 1
 #    print "correct: ", correct, "    Wrong: ", wrong, "    len(matches): ", len(matches)
     print 'correct: ', float(correct) / (correct + wrong), '    worng: ', float(wrong) / (correct + wrong)
-    return float(correct) / (correct + wrong), float(wrong) / (correct + wrong)
+    return float(correct) / (correct + wrong), float(wrong) / (correct + wrong), match_res
 
 def correct_match(point1, point2, pose, support_radii):
     #print "point1: ", point1
@@ -304,10 +326,30 @@ def match_des(des1, des2, ratio=1):
     dd = []
     for des in des2:
         d, i = tree.query(des, k=2)
-        if abs(d[0] / d[1]) < ratio:
+        #if  (ratio > 1) or (abs(d[0] / d[1]) < ratio):
+        if (abs(d[0] / d[1]) < ratio):
         #if True:
             ii_orig.append(counter)
             ii.append(i[0])
+            dd.append(d[0])
+
+        counter += 1
+    matches = stack_matches(ii_orig, ii, dd)
+    return matches
+        
+def match_des_test(des1, des2, ratio=1):
+    tree = spatial.KDTree(des2)
+    counter = 0
+    ii_orig = []
+    ii = []
+    dd = []
+    for des in des1:
+        d, i = tree.query(des, k=2)
+        #if  (ratio > 1) or (abs(d[0] / d[1]) < ratio):
+        if (abs(d[0] / d[1]) < ratio):
+        #if True:
+            ii_orig.append(i[0])
+            ii.append(counter)
             dd.append(d[0])
         counter += 1
         
