@@ -104,6 +104,7 @@ def main():
                     #plt.show()
                     
                     _, error, gstep, X_, code_ = sess.run([train_op, total_loss, global_step, recon, code], feed_dict={net_x:X})
+                    error, gstep, X_, code_ = sess.run([total_loss, global_step, recon, code], feed_dict={net_x:X})
                     
                     X_[X_ > 0.5] = 1
                     X_[X_ <= 0.5] = 0
@@ -111,8 +112,8 @@ def main():
                     acc = numpy.sum(diff[diff > 0])
                     acc = 1 - (acc / (BATCH_SIZE_FULL * math.pow(reader.patch_dim, 3)))
                     
-                    #for aug_i, patch in enumerate(code_):
-                    #    numpy.save(dir_temp + "code/sample_" + str(ids[aug_i]) + "_" + str(augs[aug_i]), patch)
+                    for aug_i, patch in enumerate(code_):
+                        numpy.save(dir_temp + "code/sample_" + str(ids[aug_i]) + "_" + str(augs[aug_i]), patch)
                     """
                     if patch_num < reader.num_samples:
                         for patch in X_:
@@ -127,7 +128,7 @@ def main():
                     #print "Batch:", batch ,"  Loss: {0:.6f}".format(error), "  acc: {0:.4f}".format(acc), "    global step: ", gstep, " sample: ", reader.sample_class_current,  "    Duration (sec): {0:.2f}".format(duration)
                     print "Batch:", batch ,"  Loss: {0:.6f}".format(error), "  acc: {0:.4f}".format(acc), "    global step: ", gstep, " sample: ", reader.permutation_num,  "  patch time: {0:.2f}  Duration (sec): {1:.2f}".format(patch_time, duration)
                         
-                    if gstep % 1000 == 999:
+                    if gstep % 1000 == 9999:
                         start_time = time.time()
                         save_path = saver.save(sess, os.path.join(models_dir, "9models_ae32_540aug_5_5_3_5460_noise_relR_nr.ckpt"))
                         save_time = time.time() - start_time
