@@ -5,7 +5,7 @@ import numpy as np
 import utils
 import itertools
 
-def plot_patch_3D(patch, name='Patch'):
+def plot_patch_3D(patch, name='Patch', fig = -1):
     x = []
     y = []
     z = []
@@ -17,8 +17,8 @@ def plot_patch_3D(patch, name='Patch'):
                     y.append(yi)
                     z.append(zi)
     
-    
-    fig = plt.figure()
+    if fig == -1:
+        fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter3D(x, y, z)
     plt.title(name)
@@ -37,6 +37,7 @@ def plot_patch_TSDF(patch, cutoff=0.1, name='Patch'):
     y = []
     z = []
     s = []
+    c = []
     sizex = patch.shape[0]
     sizey = patch.shape[1]
     sizez = patch.shape[2]
@@ -44,16 +45,22 @@ def plot_patch_TSDF(patch, cutoff=0.1, name='Patch'):
     for xi in np.arange(0, sizex):
         for yi in np.arange(0, sizey):
             for zi in np.arange(0, sizez):
-                if patch[xi, yi, zi] < 0.2:
+                if patch[xi, yi, zi] <= cutoff:
                     x.append(xi/float(1000))
                     y.append(yi/float(1000))
                     z.append(zi/float(1000))
-                    s.append(patch[xi, yi, zi])
+                    s.append(cutoff - patch[xi, yi, zi, 0])
+                    #s.append(0.1)
     
     #s = np.reshape(patch, [sizex*sizey*sizez]) / np.max(patch)
     #print patch
     print 'smax: ', np.max(s)
-    return mlab.points3d(x, y, z, s, colormap='Spectral', scale_factor=0.004)
+    print "tsdf points: ", len(x)
+    tsdf = mlab.points3d(x, y, z, s, colormap='Spectral', scale_factor=0.004, scale_mode="scalar")
+    tsdf.module_manager.scalar_lut_manager.reverse_lut = True
+    return tsdf
+
+    return mlab.points3d(x, y, z, s, colormap='Spectral', scale_factor=0.004, scale_mode="scalar")
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
