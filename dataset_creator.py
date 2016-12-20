@@ -4,7 +4,7 @@ import numpy as np
 #from mayavi import mlab
 from sampling import SampleAlgorithm
 import time
-import cluster_points
+#import cluster_points
 import cluster_points_fpfh
 import cluster_points_addaug
 import cluster_points_parallel2
@@ -27,7 +27,8 @@ def main():
                           num_classes=-1, relL=0.07, patch_dim=patch_dim,
                           use_normals_pc=False, use_point_as_mean=True, flip_view_point=False)
     
-    reader.create_dataset(dir_temp='temp_9/', num_rotations=45, noises=[0, 0.3], relRs=[0.05, 0.07, 0.09], nrs=2)
+    #reader.create_dataset(dir_temp='temp_9/', num_rotations=45, noises=[0, 0.3], relRs=[0.05, 0.07, 0.09], nrs=2)
+    reader.create_dataset(dir_temp='temp_9/', num_rotations=90, noises=[0], relRs=[0.05, 0.07, 0.09], nrs=2)
     
     
     return 0
