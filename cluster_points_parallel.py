@@ -276,6 +276,7 @@ class ClusterPoints:
         print "kmeans clusters: ", self.num_clusters
         
         meta = np.load(dir_temp + "meta.npy")
+        #meta = np.load(dir_temp + "meta1.npy")
         #self.num_clusters = meta[0]
         self.num_samples = meta[1]
         #self.num_samples = 3440
@@ -287,6 +288,7 @@ class ClusterPoints:
         #self.num_clusters = self.num_samples
         #self.labels = range(self.num_samples)
         if(self.labels == None):
+            print "no clusters"
             self.labels = range(self.num_samples)
             self.num_clusters = self.num_samples
         #if(self.num_clusters == None):
