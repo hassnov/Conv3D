@@ -170,7 +170,9 @@ def main(args):
                 net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
                 
                 #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 3057, train=False)
-                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3_4000(net_x, 0.5, 5460, train=False)
+                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 5460, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3_4000(net_x, 0.5, 113, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_small(net_x, 0.5, 537, train=False)
                 
                 #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
                 #loss += 5e-4 * regularizers
@@ -185,7 +187,7 @@ def main(args):
         
                 # Create initialization "op" and run it with our session 
                 init = tf.initialize_all_variables()
-                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.20)
+                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.22)
                 sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
                 sess.run(init)
                 
@@ -195,7 +197,11 @@ def main(args):
                 #if first:
                 #saver.restore(sess, os.path.join(models_dir,'9models_270aug_5_5_3_3_3_7267_noise_NoClusters_copy.ckpt'))
                 #saver.restore(sess, os.path.join(models_dir,'5models_720aug_5_5_3_3_3_3057_noise_nr_relR_NoClusters_copy.ckpt'))
-                saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_NoClusters.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_NoClusters.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'1models_540aug_5_5_3_3_537_arm_45rots_noise__relR_nr_NoClusters.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_800Clusters_copy2.ckpt'))
+                saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_90rots_relR_nr_NoClusters.ckpt'))
+                
                 #saver.restore(sess, os.path.join(models_dir,'5models_360aug_5_5_3_3_3_3057_noise_nr_NoClusters_copy0.66.ckpt'))
                 #saver.restore(sess, os.path.join(models_dir,'45models_360aug_5_5_3_3_3_10000_nr_noise_NoClusters.ckpt'))  
                 #saver.restore(sess, os.path.join(models_dir,'5models_360aug_5_5_3_3057_noise_nr_NoClusters_copy.ckpt'))
@@ -227,8 +233,9 @@ def main(args):
                     X207, Y207 = reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=False, r_in=reader_scene.l*(0.04/relL))
                     X203, Y203 = reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader_scene.l*(0.03/relL))
                     #X202, Y202 = reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader_scene.l*(0.02/relL))
-                    """
+                    
                     numpy.save('scene_debug/sample_scene_X_' + str(b), X2)
+                    """
                     numpy.save('scene_debug/sample_scene_X02_' + str(b), X202)
                     numpy.save('scene_debug/sample_scene_X03_' + str(b), X203)
                     numpy.save('scene_debug/sample_scene_X05_' + str(b), X207)
@@ -252,8 +259,9 @@ def main(args):
                     X03, Y03 = reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader.l*(0.03/relL))
                     #X02, Y02 = reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader.l*(0.02/relL))
                     patch_time = time.time() - start_time
-                    """                 
+                                     
                     numpy.save('scene_debug/sample_model_X_' + str(b), X)
+                    """
                     numpy.save('scene_debug/sample_model_X02_' + str(b), X02)
                     numpy.save('scene_debug/sample_model_X03_' + str(b), X03)
                     numpy.save('scene_debug/sample_model_X05_' + str(b), X07)
@@ -299,7 +307,7 @@ def main(args):
                 
                 correct, _, match_res = utils.correct_matches_support_radii(reader_scene.samples, reader.samples, matches,
                                                        pose=trans_mat, N=100000, support_radii=support_radii)
-                #numpy.save('scene_debug/matche_res', match_res)
+                numpy.save('scene_debug/matche_res', match_res)
                 #correct, wrong = utils.correct_matches(reader.samples, reader_scene.samples, matches, N=100000)
                 best10 = num_samples//10
                 print 'N=', best10
