@@ -279,7 +279,7 @@ def num_corresponding_features(samples_model, samples_scene, full_scene, pose, s
 
 def correct_matches_support_radii(samples1, samples2, matches, pose, N=50, ignore_size=True, support_radii=0.01):
     if(len(matches)==0):
-        return 0, 0
+        return 0, 0, 0
     if not ignore_size:
         assert(samples1.shape[0] == samples2.shape[0] == matches.shape[0])
         assert(samples1.shape[0] == samples2.shape[0])
