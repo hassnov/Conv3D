@@ -47,13 +47,13 @@ def get_scene(base_path, scenes_dir, curr_i, configs):
     model_trans_path = [""]*models_count
     for i in range(models_count):
         model_path[i] = base_path + map_section(config, "MODELS")['model_' + str(i)].strip('\"')
-        #root, ext = os.path.splitext(model_path[i])
-        #model_path[i] = root + '_0' + ext
+        root, ext = os.path.splitext(model_path[i])
+        model_path[i] = root + '_0' + ext
         model_trans_path[i] = base_path + map_section(config, "MODELS")['model_' + str(i) + '_groundtruth'].strip('\"')  
     scene_path = base_path + map_section(config, "SCENE")['path'].strip('\"')
     root, ext = os.path.splitext(scene_path)
-    scene_path = root + '_0.1' + ext
-    #scene_path = root + '_0' + ext
+    #scene_path = root + '_0.1' + ext
+    scene_path = root + '_0' + ext
     
     return model_path, model_trans_path, scene_path
 
@@ -98,13 +98,13 @@ def main(args):
     rel_support_radii = float(args[7])
     patch_dim = 32
     relL = 0.05
-    config_files = fill_files_list(os.path.join(scenes_dir, "configs.txt"), scenes_dir)
-    #config_files = None
+    #config_files = fill_files_list(os.path.join(scenes_dir, "configs.txt"), scenes_dir)
+    config_files = None
     
-    for s in range(0, scenes_count):
+    for s in range(1, scenes_count):
         model_paths, model_trans_paths, scene_path = get_scene(base_path, scenes_dir, s, configs=config_files)
-        if "Scene3" in scene_path or "Scene4" in scene_path:
-            continue
+        #if "Scene3" in scene_path or "Scene4" in scene_path:
+        #    continue
         print "scene path: ", scene_path
         reader_scene = PlyReader.PlyReader()
         reader_scene.read_ply(scene_path, num_samples=num_samples, add_noise=False, noise_std=0.5, noise_prob=0, noise_factor=0,
@@ -113,7 +113,9 @@ def main(args):
         pc_diameter = utils.get_pc_diameter(reader_scene.data)
         l_scene = relL*pc_diameter
         support_radii = rel_support_radii*pc_diameter
-        #print "supprot_radii", support_radii
+        #support_radii = 0.0114401621899
+        print "scene diameter: ", pc_diameter
+        print "supprot_radii", support_radii
         reader_scene.set_variables(l=l_scene, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=False)
         print "num before filtering: ", reader_scene.samples.shape[0]
         reader_scene.samples = filter_scene_samples(reader_scene.data, reader_scene.samples, support_radii/2, threshold=500)
@@ -127,7 +129,7 @@ def main(args):
             #    continue 
             print "trans mat path: ", model_trans_path
             print "model_path: ", model_path
-            if not "Arm" in model_path:
+            if not "chef" in model_path:
                 print "skipping: ", model_path
                 continue
             trans_mat = numpy.loadtxt(model_trans_path, ndmin=2)
@@ -135,9 +137,12 @@ def main(args):
             reader.read_ply(model_path, num_samples=num_samples, add_noise=False,
                              sampling_algorithm=SampleAlgorithm.ISS_Detector)
             pc_diameter = utils.get_pc_diameter(reader.data)
+            print "model diameter: ", pc_diameter
             l = relL*pc_diameter
             reader.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=False)
+            
             #reader_scene.samples = utils.transform_pc(reader.samples, trans_mat)
+            
             reader_scene.sample_indices = -1
             reader_scene.index = 0
             reader_scene.sample_class_current = 0
@@ -166,7 +171,10 @@ def main(args):
                 net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
                 net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
                 
-                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 3057, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 3057, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 32, train=False)
+                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3_4000(net_x, 0.5, 5460, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_small(net_x, 0.5, 537, train=False)
                 
                 #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
                 #loss += 5e-4 * regularizers
@@ -181,7 +189,7 @@ def main(args):
         
                 # Create initialization "op" and run it with our session 
                 init = tf.initialize_all_variables()
-                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.15)
+                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.20)
                 sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
                 sess.run(init)
                 
@@ -190,7 +198,12 @@ def main(args):
                 #saver.restore(sess, os.path.join(models_dir,'32models_'+ str(train_rotations) +'_5_5_3_3_3443_ae_kmeans_copy2.ckpt'))   # Load previously trained weights
                 #if first:
                 #saver.restore(sess, os.path.join(models_dir,'9models_270aug_5_5_3_3_3_7267_noise_NoClusters_copy.ckpt'))
-                saver.restore(sess, os.path.join(models_dir,'5models_720aug_5_5_3_3_3_3057_noise_nr_relR_NoClusters_copy.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'5models_720aug_5_5_3_3_3_3057_noise_nr_relR_NoClusters_copy.ckpt'))
+                saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_NoClusters.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'1models_540aug_5_5_3_3_537_arm_45rots_noise__relR_nr_NoClusters.ckpt'))
+                
+                #saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_800Clusters.ckpt'))
+                
                 #saver.restore(sess, os.path.join(models_dir,'5models_360aug_5_5_3_3_3_3057_noise_nr_NoClusters_copy0.66.ckpt'))
                 #saver.restore(sess, os.path.join(models_dir,'45models_360aug_5_5_3_3_3_10000_nr_noise_NoClusters.ckpt'))  
                 #saver.restore(sess, os.path.join(models_dir,'5models_360aug_5_5_3_3057_noise_nr_NoClusters_copy.ckpt'))
@@ -206,35 +219,64 @@ def main(args):
                 samples_count_mod_patch = reader.samples.shape[0] - reader.samples.shape[0] % BATCH_SIZE
                 c1_1s = numpy.zeros((reader.samples.shape[0], c1_shape[1] * c1_shape[2] * c1_shape[3] * c1_shape[4]), dtype=numpy.float32)
                 p1_1s = numpy.zeros((reader.samples.shape[0], p1_shape[1] * p1_shape[2] * p1_shape[3] * p1_shape[4]), dtype=numpy.float32)
-                f0_1s = numpy.zeros((samples_count_mod_patch, f0_shape[1]), dtype=numpy.float32)
+                f0_1s = numpy.zeros((samples_count_mod_patch, f0_shape[1]*1), dtype=numpy.float32)
                 f1_1s = numpy.zeros((samples_count_mod_patch, f1_shape[1]), dtype=numpy.float32)
                 
                 samples_count_scene_mod_patch = reader_scene.samples.shape[0] - reader_scene.samples.shape[0] % BATCH_SIZE
                 c1_2s = numpy.zeros((reader.samples.shape[0], c1_shape[1] * c1_shape[2] * c1_shape[3] * c1_shape[4]), dtype=numpy.float32)
                 p1_2s = numpy.zeros((reader.samples.shape[0], p1_shape[1] * p1_shape[2] * p1_shape[3] * p1_shape[4]), dtype=numpy.float32)
-                f0_2s = numpy.zeros((samples_count_scene_mod_patch, f0_shape[1]), dtype=numpy.float32)
+                f0_2s = numpy.zeros((samples_count_scene_mod_patch, f0_shape[1]*1), dtype=numpy.float32)
                 f1_2s = numpy.zeros((samples_count_scene_mod_patch, f1_shape[1]), dtype=numpy.float32)
                 
-                for b in range(reader_scene.samples.shape[0] // BATCH_SIZE):                    
+                for b in range(reader_scene.samples.shape[0] // BATCH_SIZE):
                     i = b*num_rotations*BATCH_SIZE
                     i1 = (b + 1)*num_rotations*BATCH_SIZE 
-                    X2, Y2= reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations)
-                    numpy.save('scene_debug/sample_scene_' + str(b), X2)
-                    c1_2, p1_2, f0_2, f1_2 = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X2, net_y: Y2})
+                    X2, Y2= reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True)
+                    #X207, Y207 = reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=False, r_in=reader_scene.l*(0.04/relL))
+                    #X203, Y203 = reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader_scene.l*(0.03/relL))
+                    #X202, Y202 = reader_scene.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader_scene.l*(0.02/relL))
+                    """
+                    numpy.save('scene_debug/sample_scene_X_' + str(b), X2)
+                    numpy.save('scene_debug/sample_scene_X02_' + str(b), X202)
+                    numpy.save('scene_debug/sample_scene_X03_' + str(b), X203)
+                    numpy.save('scene_debug/sample_scene_X05_' + str(b), X207)
+                    """
+                    _, _, f0_2, f1_2 = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X2, net_y: Y2})
+                    #_, _, f0_207, _ = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X207, net_y: Y207})
+                    #_, _, f0_203, _ = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X203, net_y: Y203})
+                    #_, _, f0_202, _ = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X202, net_y: Y202})
+                    #assert (numpy.all(f0_2 == f0_207))
+                    #print b, ", ",
+                    #f0_2 = numpy.hstack((f0_2, f0_207, f0_203, f0_202))                    
+                    #f0_2 = numpy.hstack((f0_2, f0_207, f0_203))
                     f0_2s[i:i1] = numpy.reshape(f0_2, (samples_per_batch, f0_2s.shape[1]))
                     f1_2s[i:i1] = numpy.reshape(f1_2, (samples_per_batch, f1_2s.shape[1]))
                     #print b
 
                 for b in range(reader.samples.shape[0] // BATCH_SIZE):
                     start_time = time.time()
-                    X, Y= reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations)
-                    numpy.save('scene_debug/sample_model_' + str(b), X)
-                    patch_time = time.time() - start_time                    
+                    X, Y= reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True)
+                    #X07, Y07 = reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=False, r_in=reader.l*(0.04/relL))
+                    #X03, Y03 = reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader.l*(0.03/relL))
+                    #X02, Y02 = reader.next_batch_3d(BATCH_SIZE, num_rotations=num_rotations, increment=True, r_in=reader.l*(0.02/relL))
+                    patch_time = time.time() - start_time
+                    """                 
+                    numpy.save('scene_debug/sample_model_X_' + str(b), X)
+                    numpy.save('scene_debug/sample_model_X02_' + str(b), X02)
+                    numpy.save('scene_debug/sample_model_X03_' + str(b), X03)
+                    numpy.save('scene_debug/sample_model_X05_' + str(b), X07)
+                    """
                     i = b*num_rotations*BATCH_SIZE
                     i1 = (b + 1)*num_rotations*BATCH_SIZE
                     start_eval = time.time()
-                    c1_1, p1_1, f0_1, f1_1 = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X, net_y: Y})
-                    eval_time = time.time() - start_eval                   
+                    _, _, f0_1, f1_1 = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X, net_y: Y})
+                    #_, _, f0_107, _ = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X07, net_y: Y07})
+                    #_, _, f0_103, _ = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X03, net_y: Y03})
+                    #_, _, f0_102, _ = sess.run([conv1, pool1, h_fc0, h_fc1], feed_dict={net_x:X02, net_y: Y02})
+                    eval_time = time.time() - start_eval 
+                    #assert (numpy.all(f0_1 == f0_107))                  
+                    #f0_1 = numpy.hstack((f0_1, f0_107, f0_103, f0_102))
+                    #f0_1 = numpy.hstack((f0_1, f0_107, f0_103))
                     f0_1s[i:i1] = numpy.reshape(f0_1, (samples_per_batch, f0_1s.shape[1]))
                     f1_1s[i:i1] = numpy.reshape(f1_1, (samples_per_batch, f1_1s.shape[1]))                   
                     duration = time.time() - start_time
@@ -247,20 +289,25 @@ def main(args):
                 #numpy.save('scene_debug/scene_f0_2s.npy', f0_2s)
                 desc1 = f0_1s
                 desc2 = f0_2s
+                
                 if desc1.shape[0] < desc2.shape[0]:                    
                     matches = utils.match_des_test(desc1, desc2, ratio)
                     print "match_des_test"
                 else:
                     matches = utils.match_des(desc1, desc2, ratio)
                     print "match_des"
-                numpy.save('scene_debug/matches', matches)
+                    
+                #matches = utils.match_des(desc1, desc2, ratio)
+                #print "match_des"
+                #numpy.save('scene_debug/matches', matches)
                 #numpy.save("scene_debug/scene_matches.npy", matches)
                 print 'num_matches: ', len(matches)
                 #correct, wrong = utils.correct_matches_support_radii(reader.samples, reader_scene.samples, matches,
                 #                                       pose=trans_mat, N=100000, support_radii=support_radii)
                 
-                correct, wrong = utils.correct_matches_support_radii(reader_scene.samples, reader.samples, matches,
+                correct, _, match_res = utils.correct_matches_support_radii(reader_scene.samples, reader.samples, matches,
                                                        pose=trans_mat, N=100000, support_radii=support_radii)
+                #numpy.save('scene_debug/matche_res', match_res)
                 #correct, wrong = utils.correct_matches(reader.samples, reader_scene.samples, matches, N=100000)
                 best10 = num_samples//10
                 print 'N=', best10
@@ -270,13 +317,13 @@ def main(args):
                 #                                           pose=trans_mat, N=best10, support_radii=support_radii)
                 recall = (len(matches)/float(num_cf)*correct)
                 scene_name = os.path.split(scene_path)[1]
-                with open("results_real2.txt", "a") as myfile:
+                with open("results_mian.txt", "a") as myfile:
                     myfile.write('train rotations: ' + str(train_rotations) + '    num samples: ' + str(num_samples) + '    scene: ' + scene_name + "    correct: {0:.4f}".format(correct) + "    correct best 10: {0:.4f}".format(correct10) + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format(recall) + '\n')
                     myfile.close()
-                with open("precision_real2.txt", "a") as myfile:
+                with open("precision_mian.txt", "a") as myfile:
                     myfile.write("{0:.4f}".format(correct) + '\n')
                     myfile.close()
-                with open("recall_real2.txt", "a") as myfile:
+                with open("recall_mian.txt", "a") as myfile:
                     myfile.write("{0:.4f}".format(recall) + '\n')
                     myfile.close()
                 #plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches, N=200)
@@ -298,7 +345,7 @@ main(["", r"/home/titan/hasan/workspace/Conv3d/retrieval_dataset/3D models/Stanf
 """
 main(["", r"/home/titan/hasan/workspace/Conv3d/laser/3D models/Mian",
       "/home/titan/hasan/workspace/Conv3d/laser", 
-      "51", "-1", "-1", "1.1", "0.07"])
+      "51", "-1", "-1", "1", "0.07"])
 """
 
 """
