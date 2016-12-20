@@ -57,7 +57,7 @@ class Sampler:
         #min_num_point = min(int(pc_iss.shape[0] / 10), 200)
         if min_num_point < 0:
             #min_num_point = min(int(pc_iss.shape[0] / 10), 200)
-            #min_num_point = min(int(pc_iss.shape[0] / 1), 200)
+            #min_num_point = min(int(pc_iss.shape[0] / 1), 300)
             #min_num_point = min(int(pc_iss.shape[0] / 1), 500)
             min_num_point = int(pc_iss.shape[0] / 1) 
             
