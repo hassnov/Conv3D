@@ -306,6 +306,51 @@ def build_graph_3d_5_5_3_3_3_4000(data, keep_prob, num_classes, train=True, wd=0
     else:
         return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv0, conv1, h_fc0, h_fc1
 
+    
+def build_graph_3d_5_5_3_3_3_4000_2(data, keep_prob, num_classes, train=True, wd=0.1):
+    data_shape = data.get_shape().as_list()
+    print 'data shape: ', data_shape
+    NUM_CHANNELS = data_shape[4]
+    #data_float = tf.to_float(data)
+    conv0 = conv3d_layer("conv0",data,[5, 5, 5, NUM_CHANNELS, 32], wd=wd, strides=[1, 2, 2, 2, 1])
+    #conv0 = conv3d_layer("conv0",data,[5, 5, 5, NUM_CHANNELS, 32], wd=wd)
+    conv1 = conv3d_layer("conv1", conv0, [5, 5, 5, 32, 32], wd=wd)
+    conv2 = conv3d_layer("conv2", conv1, [3, 3, 3, 32, 64], wd=wd)
+    #conv3 = conv3d_layer("conv3", conv2, [3, 3, 3, 64, 64], wd=wd)
+    #conv4 = conv3d_layer("conv4", conv3, [3, 3, 3, 64, 32], wd=wd)
+    conv3 = conv3d_layer("conv3", conv2, [3, 3, 3, 64, 64], wd=wd)
+    conv4 = conv3d_layer("conv4", conv3, [3, 3, 3, 64, 32], wd=wd)
+    
+    shape = conv4.get_shape().as_list()
+    fc0_inputdim = shape[1]*shape[2]*shape[3]*shape[4];   # Resolve input dim into fc0 from conv3-filters
+    
+    #fc0 = fc_layer("fc0", pool1, [fc0_inputdim, 128])   
+    W_fc0 = weight_variable([fc0_inputdim, 512])
+    b_fc0 = bias_variable([512])
+    h_pool2_flat = tf.reshape(conv4, [-1, fc0_inputdim])
+    h_fc0 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc0) + b_fc0)
+    tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(W_fc0), wd, name='decay'))
+    
+    
+    W_fc1 = weight_variable([512, 2048])
+    b_fc1 = bias_variable([2048])
+    h_fc1 = tf.nn.relu(tf.matmul(h_fc0, W_fc1) + b_fc1)
+    if train:
+        h_fc1 = tf.nn.dropout(h_fc1, keep_prob)
+    
+    tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(W_fc1), wd, name='decay'))
+    #fc1 = fc_layer("fc1", fc0, [128, NUM_LABELS])
+    W_fc2 = weight_variable([2048, num_classes])
+    b_fc2 = bias_variable([num_classes])
+    
+    regularizers = (tf.nn.l2_loss(W_fc0) + tf.nn.l2_loss(b_fc0) +
+                    tf.nn.l2_loss(W_fc1) + tf.nn.l2_loss(b_fc1) +
+                    tf.nn.l2_loss(W_fc2) + tf.nn.l2_loss(b_fc2))
+    if train:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers 
+    else:
+        return tf.matmul(h_fc1, W_fc2) + b_fc2, regularizers, conv0, conv1, h_fc0, h_fc1
+
 
 
 def build_graph_3d_5_5_3_3_3(data, keep_prob, num_classes, train=True, wd=0.1):
@@ -330,7 +375,10 @@ def build_graph_3d_5_5_3_3_3(data, keep_prob, num_classes, train=True, wd=0.1):
     W_fc0 = weight_variable([fc0_inputdim, 512])
     b_fc0 = bias_variable([512])
     h_pool2_flat = tf.reshape(conv4, [-1, fc0_inputdim])
+    print "h_pool2_flat: ", h_pool2_flat
     h_fc0 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc0) + b_fc0)
+    #if train:
+    #    h_fc0 = tf.nn.dropout(h_fc0, keep_prob)
     tf.add_to_collection('losses', tf.mul(tf.nn.l2_loss(W_fc0), wd, name='decay'))
     
     
