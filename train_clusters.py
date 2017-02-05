@@ -32,18 +32,9 @@ def main():
     #files_file = os.path.join(dir1, 'files_file.txt')
     start_time = time.time()
     dir_temp = "../temp_5nr/"
-    reader = cluster_points_parallel2.ClusterPoints()
-    #reader.permutation_num = 2010100
-    #reader = PlyReader3.PlyReader()
-    #reader.create_reader(files_file, 0,
-    #                      add_noise=False, noise_std=0.1, sampling_algorithm=SampleAlgorithm.ISS_Detector,
-    #                      num_classes=100, relL=0.07, patch_dim=patch_dim,
-    #                      use_normals_pc=False, use_point_as_mean=False, flip_view_point=False)
-    
-    #0.00001 bunny 7 clusters
-    #temp_65 bw=0.0001
+    reader = cluster_points_parallel2.ClusterPoints() 
     reader.load_dataset_and_labels(dir_temp=dir_temp, k=201, create_labels=False)
-    #reader.permutation_num_train = 1400000
+    
     
     samples_count = reader.compute_total_samples(num_aug)
     batches_per_epoch = samples_count/BATCH_SIZE_FULL
@@ -66,8 +57,6 @@ def main():
         # Placeholders MUST be filled for each session.run()
         net_x = tf.placeholder("float", xShape, name="in_x")
         net_y = tf.placeholder(tf.int64, yShape, name="in_y")
-        #net_x = tf.placeholder(tf.int8, xShape, name="in_x")
-        #net_y = tf.placeholder(tf.int64, yShape, name="in_y")
         
         #lr = tf.placeholder(tf.float32)
         # Build the graph that computes predictions and assert that network output is compatible
@@ -84,8 +73,7 @@ def main():
         cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, net_y))
         tf.add_to_collection('losses', cross_entropy)
         loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
-        #loss = cross_entropy + 5e-4 * regularizers
-        #loss = cross_entropy
+        
         
         output = tf.nn.relu(logits)
         #loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits, tf.clip_by_value(net_y,1e-10,1.0)))

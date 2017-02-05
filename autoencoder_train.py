@@ -39,17 +39,13 @@ def main():
     
     reader.load_dataset_and_labels(dir_temp=dir_temp, k=300, permutation_file="permutation_straight")
     #reader.permutation_num = 1800000
-    ######## 1200200
-    #reader.permutation_num = 63*720 + 680
+
     
     reader_test = cluster_points_fpfh.ClusterPoints()
-    #reader_test.load_dataset(dir_temp="temp_1100/", k=300)
     reader_test.num_samples = 400
     reader_test.labels = numpy.arange(reader_test.num_samples)
     reader_test.patch_dim = 32
-    #reader_test.sample_class_start = 3100
-    #reader_test.num_samples = 3400 - 3100 
-    #reader_test.num_samples = 100
+
     
     samples_count = reader.compute_total_samples(num_aug)
     batches_per_epoch = samples_count/BATCH_SIZE_FULL
@@ -63,9 +59,7 @@ def main():
         # Create input/output placeholder variables for the graph (to be filled manually with data)
         # Placeholders MUST be filled for each session.run()
         net_x = tf.placeholder("float", xShape, name="aein_x")
-        #net_y = tf.placeholder(tf.int64, yShape, name="in_y")
         
-        #logits, regularizers = convnnutils.build_graph_3d_7_5_3_nopool(net_x, 0.5, reader.num_clusters, train=True)
         
         recon, code = autoencoderutils.autoencoder_3_3_3_3_3(net_x, 32)
         assert (recon.get_shape().as_list() == net_x.get_shape().as_list())
@@ -141,7 +135,7 @@ def main():
                         save_time = time.time() - start_time
                         print "Model saved in file: ",save_path, " in {0:.2f} seconds".format(save_time)
                         
-                    
+                    # Evaluation
                     if gstep % 2000== 11999:
                         acc_test = []
                         for ii in range(10):
