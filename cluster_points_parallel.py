@@ -263,7 +263,7 @@ class ClusterPoints:
         #self.save_meta(global_i, dir_temp)
     
     
-    def load_dataset_and_labels(self, k, dir_temp='temp/'):        
+    def load_dataset_and_labels(self, k, dir_temp='temp/', permutation_file="permutation"):        
         if os.path.isfile(dir_temp + "labels_train" + str(k) + ".npy"):
             print "loading saved clusters"
             self.labels = np.load(dir_temp + "labels_train" + str(k) + ".npy")
@@ -294,15 +294,17 @@ class ClusterPoints:
         #if(self.num_clusters == None):
         #    self.num_clusters = self.num_samples
             
-        if not os.path.isfile(dir_temp + "permutation.npy"):
+        if not os.path.isfile(dir_temp + permutation_file + ".npy"):
             #num_augs = 180*2            
             num_augs = meta[3]
             print "creating permutaions for {0} samples and {1} augs".format(self.num_samples, num_augs)
             self.num_permutations = self.num_samples * num_augs
-            self.samples_permutation = np.random.permutation(self.num_permutations)
-            np.save(dir_temp + "permutation.npy", self.samples_permutation)
+            #self.samples_permutation = np.random.permutation(self.num_permutations)
+            self.samples_permutation = np.arange(self.num_permutations)
+            np.save(dir_temp + permutation_file + ".npy", self.samples_permutation)
         else:
-            self.samples_permutation = np.load(dir_temp + "permutation.npy")
+            print "loading permutation from ", dir_temp + permutation_file + ".npy"
+            self.samples_permutation = np.load(dir_temp + permutation_file + ".npy")
             self.num_permutations = self.samples_permutation.shape[0]
             num_augs = self.num_permutations / self.num_samples
             print "................num augs: ", num_augs 
