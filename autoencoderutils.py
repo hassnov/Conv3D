@@ -28,7 +28,7 @@ def conv3d_layer_transpose(name, input_data, weights, output_shape, wd=0.1, stri
     with tf.variable_scope(name):
         biases = tf.Variable(tf.zeros([weights.get_shape().as_list()[3]]), name="biases")  
         conv = tf.nn.conv3d_transpose(input_data, weights, output_shape=output_shape, strides=strides, padding=padding)
-        bias = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list())
+        bias = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list(), name="bias_reshape")
         layer = tf.nn.relu(bias, name=name)
     #activation_summary(layer)
     return layer
@@ -213,6 +213,7 @@ def autoencoder_3_3_3_3(net_in, LATENT_DIMS):
     fc1 = fc_layer("aefc1", fc0, [LATENT_DIMS,fc0_inputdim])
     fc1_reshaped = tf.reshape(fc1, conv2.get_shape().as_list())
     
+    
     deconv0 = conv3d_layer_transpose("aedeconv0", fc1_reshaped, W3, output_shape=tf.shape(conv2), strides=[1, 1, 1, 1, 1])
     deconv1 = conv3d_layer_transpose("aedeconv1", deconv0, W2, output_shape=tf.shape(conv1), strides=[1, 1, 1, 1, 1])
     deconv2 = conv3d_layer_transpose("aedeconv2", deconv1, W1, output_shape=tf.shape(conv0), strides=strides)
@@ -252,6 +253,7 @@ def autoencoder_3_3_3_3_3(net_in, LATENT_DIMS):
     # Then two sets of depooling and convolutions
     fc1 = fc_layer("aefc1", fc0, [LATENT_DIMS,fc0_inputdim])
     fc1_reshaped = tf.reshape(fc1, shape)
+    
     
     deconv0 = conv3d_layer_transpose("aedeconv0", fc1_reshaped, W4, output_shape=tf.shape(conv3), strides=[1, 1, 1, 1, 1])
     deconv1 = conv3d_layer_transpose("aedeconv1", deconv0, W3, output_shape=tf.shape(conv2), strides=[1, 1, 1, 1, 1])
