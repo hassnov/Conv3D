@@ -61,7 +61,6 @@ temp/
 temp1/
 temp_1100/
 train_clusters.out
-train_clusters.py
 files_file*
 temp_*
 precision*
@@ -75,7 +74,6 @@ autoencoderutils2.pyc
 *.pyc
 *.py~
 cluster_points_addaug.py
-cluster_points_codes.py
 cluster_points_fpfh.py
 cluster_points_parallel.py.copy
 cluster_points_split.py
