@@ -16,7 +16,7 @@ def main():
     #num_rotations = 40
     #BATCH_SIZE = 2
     patch_dim = 32
-    files_file = os.path.join(dir1, 'files_file15.txt')
+    files_file = os.path.join(dir1, 'files_file16.txt')
     start_time = time.time()
     
     
@@ -28,8 +28,28 @@ def main():
                           use_normals_pc=False, use_point_as_mean=True, flip_view_point=False)
     
     #reader.create_dataset(dir_temp='temp_9/', num_rotations=45, noises=[0, 0.3], relRs=[0.05, 0.07, 0.09], nrs=2)
-    reader.create_dataset(dir_temp='temp_9/', num_rotations=90, noises=[0], relRs=[0.05, 0.07, 0.09], nrs=2)
+    #reader.create_dataset(dir_temp='../temp_5nr/', num_rotations=90, noises=[0, 0.3], relRs=[0.05, 0.07], nrs=2)
+    #reader.create_dataset(dir_temp='../temp_arm_rot/', num_rotations=1, noises=[0, 0.3], relRs=[0.05, 0.07], nrs=2)
+    #reader.create_fpfh_list(dir_temp='../temp_9/')
     
+    reader.create_dataset(dir_temp='../temp_arm/', num_rotations=90, noises=[0, 0.3], relRs=[0.05, 0.07], nrs=2)
+    """
+    reader.create_dataset(dir_temp='../temp_arm_rot/', num_rotations=1, noises=[0, 0.3], relRs=[0.05, 0.07], nrs=2)
+    print "Created " , "temp_arm_rot"
+    print "-------------------------------------------------"
+    reader.create_dataset(dir_temp='../temp_arm_noise/', num_rotations=90, noises=[0], relRs=[0.05, 0.07], nrs=2)
+    print "Created " , "temp_arm_noise"
+    print "-------------------------------------------------"
+    reader.create_dataset(dir_temp='../temp_arm_rad/', num_rotations=90, noises=[0, 0.3], relRs=[0.07], nrs=2)
+    print "Created " , "temp_arm_rad"
+    print "-------------------------------------------------"
+    reader.create_dataset(dir_temp='../temp_arm_nr/', num_rotations=90, noises=[0, 0.3], relRs=[0.05, 0.07], nrs=1)
+    print "Created " , "temp_arm_nr"
+    print "-------------------------------------------------"
+    reader.create_dataset(dir_temp='../temp_arm_none/', num_rotations=1, noises=[0], relRs=[0.07], nrs=1)
+    print "Created " , "temp_arm_none"
+    print "-------------------------------------------------"
+"""
     
     return 0
 
