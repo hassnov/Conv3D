@@ -17,6 +17,8 @@ from joblib import Parallel, delayed
 import multiprocessing
 from scipy import ndimage
 
+from sklearn.cluster import KMeans
+
 
 
 
@@ -62,6 +64,15 @@ class ClusterPoints:
     num_permutations = None
     permutation_num = 0
     #nr_count = 1
+    
+    
+    samples_permutation_train = None
+    num_permutations_train = None
+    permutation_num_train = 0
+    
+    samples_permutation_test = None
+    num_permutations_test = None
+    permutation_num_test = 0
 
     
     def fill_files_list(self):
@@ -237,7 +248,17 @@ class ClusterPoints:
         Parallel(n_jobs=num_cores)(delayed(process_rotation)(dir_temp, X, rot_i, global_i, ref_points, num_rotations, r, noise_i, relR_i, nr_i, augs,thetas, z_axis, self.patch_dim) for rot_i in range(num_rotations))
         #print Parallel(n_jobs=num_cores)(delayed(np.sqrt)(i) for i in range(10))
         
-    
+    def cluster_list_kmeans(self, eigen_list, k):
+        km = KMeans(k).fit(eigen_list)
+        self.labels = km.labels_
+        labels_unique = np.unique(self.labels)
+        n_clusters_ = len(labels_unique)
+        self.num_clusters = n_clusters_
+        print "kmeans clusters: ", self.num_clusters 
+        return self.labels, self.num_clusters
+        #bandwidth = estimate_bandwidth(eigen_list, quantile=0.5)
+        
+        
     def create_dataset(self, dir_temp='temp/', num_rotations=40, noises=[0, 0.3, 0.5], relRs=[0.05, 0.07], nrs=1):
         z_axis = np.array([0, 0, 1])
         #### saving data set after clustering
@@ -280,19 +301,28 @@ class ClusterPoints:
         #self.save_meta(global_i, dir_temp)
     
     
-    def load_dataset_and_labels(self, k, dir_temp='temp/'):        
-        if os.path.isfile(dir_temp + "labels_train" + str(k) + ".npy"):
+    def load_dataset_and_labels(self, k, dir_temp='temp/', create_labels=False, meta_name="meta.npy", suffix=""):
+        cluster_file = dir_temp + "labels_train_ae" + str(k) + ".npy"
+        if os.path.isfile(cluster_file):
             print "loading saved clusters"
-            self.labels = np.load(dir_temp + "labels_train" + str(k) + ".npy")
+            self.labels = np.load(cluster_file)
             labels_unique = np.unique(self.labels)
             n_clusters_ = len(labels_unique)
             self.num_clusters = n_clusters_
         else:
-            print "cant find clusters"            
+            if create_labels:
+                print "clustering"
+                list = np.load(dir_temp + 'fpfh_list.npy')
+                #list = np.load(dir_temp + 'fpfh_list.npy')
+                self.cluster_list_kmeans(list, k=k)
+                np.save(cluster_file, self.labels)
+            else:
+                print "cant find clusters"            
         
         print "kmeans clusters: ", self.num_clusters
         
-        meta = np.load(dir_temp + "meta.npy")
+        meta = np.load(dir_temp + meta_name)
+        print "meta: ", meta
         #self.num_clusters = meta[0]
         self.num_samples = meta[1]
         #self.num_samples = 3440
@@ -306,24 +336,39 @@ class ClusterPoints:
         if(self.labels == None):
             self.labels = range(self.num_samples)
             self.num_clusters = self.num_samples
+        print "num_clusters: ", self.num_clusters
         #if(self.num_clusters == None):
         #    self.num_clusters = self.num_samples
             
-        if not os.path.isfile(dir_temp + "permutation.npy"):
+        permutation_file = dir_temp + "permutation"+ suffix + ".npy"
+        if not os.path.isfile(permutation_file):
             #num_augs = 180*2
             num_augs = meta[3]
             print "creating permutaions for {0} samples and {1} augs".format(self.num_samples, num_augs)
             self.num_permutations = self.num_samples * num_augs
             self.samples_permutation = np.random.permutation(self.num_permutations)
-            np.save(dir_temp + "permutation.npy", self.samples_permutation)
+            np.save(permutation_file, self.samples_permutation)
+            
         else:
-            self.samples_permutation = np.load(dir_temp + "permutation.npy")
+            self.samples_permutation = np.load(permutation_file)
             self.num_permutations = self.samples_permutation.shape[0]
             num_augs = self.num_permutations / self.num_samples
             print "................num augs: ", num_augs 
+            #self.samples_permutation_train = np.load(dir_temp + "permutation_train.npy")
+            #self.num_permutations_train = self.samples_permutation_train.shape[0]
+            #self.samples_permutation_test = np.load(dir_temp + "permutation_test.npy")
+            #self.num_permutations_test = self.samples_permutation_test.shape[0]
+            
+        self.num_permutations_train = int(0.90*self.num_permutations)
+        self.samples_permutation_train = self.samples_permutation[0:self.num_permutations_train]
+        self.num_permutations_test = self.num_permutations - self.num_permutations_train
+        self.samples_permutation_test = self.samples_permutation[self.num_permutations_train:]
+        assert (self.num_permutations_test == self.samples_permutation_test.shape[0])
+        #print "test permutations: ",  self.samples_permutation_test
+        #np.save(dir_temp + "permutation_train.npy", self.samples_permutation_train)
+        #np.save(dir_temp + "permutation_test.npy", self.samples_permutation_test)
         
-        
-        logging.basicConfig(filename='example.log',level=logging.DEBUG)
+        #logging.basicConfig(filename='example.log',level=logging.DEBUG)
         #print self.labels 
         print [self.num_clusters, self.num_samples, self.patch_dim]
         
@@ -380,6 +425,55 @@ class ClusterPoints:
             self.permutation_num = (self.permutation_num + 1) % self.num_permutations
         return X, Y, augs, ids
     
+    def next_batch_3d_file_random_test(self, batch_size_full, num_augs=40, dir_temp='temp/'):
+        X = np.zeros((batch_size_full, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int8)
+        Y = np.zeros((batch_size_full), np.int16)
+        augs = []
+        ids = []
+        for point_number in range(batch_size_full):
+            #for aug_num, _ in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+            abs_id = self.samples_permutation_test[self.permutation_num_test]
+            sample_id = abs_id // num_augs
+            aug_num = abs_id % num_augs
+            augs.append(aug_num)
+            ids.append(sample_id)
+            #sample_id = self.sample_class_start + self.sample_class_current
+            temp_file_sample = dir_temp + "sample_" + str(sample_id) + '_' + str(aug_num) + '.npy'
+            #temp_file_label = dir_temp + "label_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
+            assert(os.path.isfile(temp_file_sample))
+            
+            X[point_number] = np.load(temp_file_sample)
+            #Y[point_number*num_rotations + aug_num ] = np.load(temp_file_label)
+            Y[point_number] = self.labels[sample_id]
+            #logging.info('sample: ' + str(sample_id) + '    label: ' + str(self.labels[sample_id]) + '    file: ' + temp_file_sample)
+            #self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
+            self.permutation_num_test = (self.permutation_num_test + 1) % self.num_permutations_test
+        return X, Y, augs, ids
+    
+    def     next_batch_3d_file_random_train(self, batch_size_full, num_augs=40, dir_temp='temp/'):
+        X = np.zeros((batch_size_full, self.patch_dim, self.patch_dim, self.patch_dim, 1), np.int8)
+        Y = np.zeros((batch_size_full), np.int16)
+        augs = []
+        ids = []
+        for point_number in range(batch_size_full):
+            #for aug_num, _ in enumerate(utils.my_range(-np.pi, np.pi, (2*np.pi)/num_rotations)):
+            abs_id = self.samples_permutation_train[self.permutation_num_train]
+            sample_id = abs_id // num_augs
+            aug_num = abs_id % num_augs
+            augs.append(aug_num)
+            ids.append(sample_id)
+            #sample_id = self.sample_class_start + self.sample_class_current
+            temp_file_sample = dir_temp + "sample_" + str(sample_id) + '_' + str(aug_num) + '.npy'
+            #temp_file_label = dir_temp + "label_" + str(self.sample_class_current) + '_' + str(aug_num) + '.npy'
+            assert(os.path.isfile(temp_file_sample))
+            
+            X[point_number] = np.load(temp_file_sample)
+            #Y[point_number*num_rotations + aug_num ] = np.load(temp_file_label)
+            Y[point_number] = self.labels[sample_id]
+            #logging.info('sample: ' + str(sample_id) + '    label: ' + str(self.labels[sample_id]) + '    file: ' + temp_file_sample)
+            #self.sample_class_current = (self.sample_class_current + 1) % self.num_samples
+            self.permutation_num_train = (self.permutation_num_train + 1) % self.num_permutations_train
+        return X, Y, augs, ids
 
 def process_rotation(dir_temp, X, rot_i, global_i, ref_points, num_rotations, r, noise_i, relR_i, nr_i, augs, thetas, z_axis, patch_dim):
     aug_num = augs[noise_i, relR_i, rot_i, nr_i]
@@ -433,3 +527,4 @@ def process_rotation(dir_temp, X, rot_i, global_i, ref_points, num_rotations, r,
         np.save(dir_temp + "sample_" + str(global_i) + "_" + str(aug_num), X1)    
     #return X[aug_num]
     
+
