@@ -13,12 +13,12 @@ import autoencoderutils
 
 def main():    
     
-    models_dir = '/home/titan/hasan/tr_models/'
+    models_dir = '/home/hasan/hasan/tr_models/'
     
     dir1 = os.path.dirname(os.path.realpath(__file__))
-    num_rotation = 45
+    num_rotation = 90
     num_noise = 2
-    num_relR = 3
+    num_relR = 2
     nrs = 2
     num_aug = num_rotation*num_noise*num_relR*nrs
     BATCH_SIZE = 1
@@ -28,19 +28,19 @@ def main():
     BATCH_SIZE_TEST = 5
     
     BATCH_SIZE_FULL = num_rotations_test*BATCH_SIZE_TEST
-    BATCH_SIZE_FULL = 100
+    BATCH_SIZE_FULL = 10
     
     patch_dim = 32
     start_time = time.time()
     #dir_temp = "temp_32/"
-    dir_temp = "temp_9/"
-    dir_test = "temp_87/"
+    dir_temp = "../temp_5nr/"
+    #dir_test = "temp_87/"
     reader = cluster_points_parallel.ClusterPoints()
     
-    reader.load_dataset_and_labels(dir_temp=dir_temp, k=300)
-    reader.permutation_num = 1800000
+    reader.load_dataset_and_labels(dir_temp=dir_temp, k=300, permutation_file="permutation_straight")
+    #reader.permutation_num = 1800000
     ######## 1200200
-    #reader.permutation_num = 4000400
+    #reader.permutation_num = 63*720 + 680
     
     reader_test = cluster_points_fpfh.ClusterPoints()
     #reader_test.load_dataset(dir_temp="temp_1100/", k=300)
@@ -89,7 +89,7 @@ def main():
         # Create a saver and a summary op based on the tf-collection
         saver = tf.train.Saver(tf.all_variables())
 
-        saver.restore(sess, os.path.join(models_dir,'9models_ae32_540aug_5_5_3_5460_noise_relR_nr.ckpt'))   # Load previously trained weights
+        saver.restore(sess, os.path.join(models_dir,'5models_ae32_720aug_5_5_3_5460_noise_relR_nr.ckpt'))   # Load previously trained weights
         
         #patch_num = 0
         #aug_num = 0   
@@ -99,11 +99,12 @@ def main():
                     start_time = time.time() 
                     #X, _= reader.next_batch_3d_file(BATCH_SIZE, num_rotations=num_aug, dir_temp=dir_temp)
                     X, _, augs, ids= reader.next_batch_3d_file_random(BATCH_SIZE_FULL, num_aug, dir_temp=dir_temp)
+                    #print "ids:", ids
                     patch_time = time.time() - start_time 
                     #plotutils.plot_patch_3D(X[0])
                     #plt.show()
                     
-                    _, error, gstep, X_, code_ = sess.run([train_op, total_loss, global_step, recon, code], feed_dict={net_x:X})
+                    #_, error, gstep, X_, code_ = sess.run([train_op, total_loss, global_step, recon, code], feed_dict={net_x:X})
                     error, gstep, X_, code_ = sess.run([total_loss, global_step, recon, code], feed_dict={net_x:X})
                     
                     X_[X_ > 0.5] = 1
@@ -112,8 +113,14 @@ def main():
                     acc = numpy.sum(diff[diff > 0])
                     acc = 1 - (acc / (BATCH_SIZE_FULL * math.pow(reader.patch_dim, 3)))
                     
-                    for aug_i, patch in enumerate(code_):
-                        numpy.save(dir_temp + "code/sample_" + str(ids[aug_i]) + "_" + str(augs[aug_i]), patch)
+                    #for aug_i, patch in enumerate(code_):
+                    #    numpy.save(dir_temp + "code/sample_" + str(ids[aug_i]) + "_" + str(augs[aug_i]), patch)
+                    #print "ids", ids
+                    #print "augs", augs
+                    if reader.permutation_num < 1000:
+                        print "Exiting when reader.permutation_num: ", reader.permutation_num
+                        return 0
+                    
                     """
                     if patch_num < reader.num_samples:
                         for patch in X_:
@@ -128,9 +135,9 @@ def main():
                     #print "Batch:", batch ,"  Loss: {0:.6f}".format(error), "  acc: {0:.4f}".format(acc), "    global step: ", gstep, " sample: ", reader.sample_class_current,  "    Duration (sec): {0:.2f}".format(duration)
                     print "Batch:", batch ,"  Loss: {0:.6f}".format(error), "  acc: {0:.4f}".format(acc), "    global step: ", gstep, " sample: ", reader.permutation_num,  "  patch time: {0:.2f}  Duration (sec): {1:.2f}".format(patch_time, duration)
                         
-                    if gstep % 1000 == 9999:
+                    if gstep % 1000 == 998:
                         start_time = time.time()
-                        save_path = saver.save(sess, os.path.join(models_dir, "9models_ae32_540aug_5_5_3_5460_noise_relR_nr.ckpt"))
+                        save_path = saver.save(sess, os.path.join(models_dir, "5models_ae32_720aug_5_5_3_5460_noise_relR_nr.ckpt"))
                         save_time = time.time() - start_time
                         print "Model saved in file: ",save_path, " in {0:.2f} seconds".format(save_time)
                         
