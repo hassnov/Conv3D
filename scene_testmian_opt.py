@@ -79,7 +79,7 @@ def filter_scene_samples(scene_data, scene_samples, support_radii, threshold):
 
     
 def main(args):
-    models_dir = '/home/titan/hasan/tr_models/'
+    models_dir = '/home/hasan/hasan/tr_models/'
     BATCH_SIZE=10
     num_rotations=1
     samples_per_batch = BATCH_SIZE * num_rotations
@@ -171,9 +171,10 @@ def main(args):
                 net_x = tf.placeholder("float", [samples_per_batch, patch_dim, patch_dim, patch_dim, 1], name="in_x")
                 net_y = tf.placeholder(tf.int64, [samples_per_batch,], name="in_y")
                 
-                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 3057, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 2070, train=False)
+                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 3057, train=False)
                 #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3(net_x, 0.5, 5460, train=False)
-                #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3_4000(net_x, 0.5, 5460, train=False)
+                logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3_4000_2(net_x, 0.5, 5460, train=False)
                 #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_3_4000(net_x, 0.5, 113, train=False)
                 #logits, regularizers, conv1, pool1, h_fc0, h_fc1 = convnnutils.build_graph_3d_5_5_3_3_small(net_x, 0.5, 537, train=False)
                 
@@ -190,7 +191,7 @@ def main(args):
         
                 # Create initialization "op" and run it with our session 
                 init = tf.initialize_all_variables()
-                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.12)
+                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.15)
                 sess = tf.Session(config=tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options))
                 sess.run(init)
                 
@@ -199,12 +200,17 @@ def main(args):
                 #saver.restore(sess, os.path.join(models_dir,'32models_'+ str(train_rotations) +'_5_5_3_3_3443_ae_kmeans_copy2.ckpt'))   # Load previously trained weights
                 #if first:
                 #saver.restore(sess, os.path.join(models_dir,'9models_270aug_5_5_3_3_3_7267_noise_NoClusters_copy.ckpt'))
-                saver.restore(sess, os.path.join(models_dir,'5models_720aug_5_5_3_3_3_3057_noise_nr_relR_NoClusters_copy.ckpt'))
+                
+                #saver.restore(sess, os.path.join(models_dir,'6models_720aug_5_5_3_3_3_2070_90rots_noise_relR_nr_200clusters_fpfh_wd2.ckpt'))
+                
+                #saver.restore(sess, os.path.join(models_dir,'5models_720aug_5_5_3_3_3_3057_90rots_noise_relR_nr_400clusters_fpfh.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'6models_720aug_5_5_3_3_3_2070_90rots_noise_relR_nr_NoClusters.ckpt'))
+                #saver.restore(sess, os.path.join(models_dir,'5models_720aug_5_5_3_3_3_3057_noise_nr_relR_NoClusters_copy.ckpt'))
                 #saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_NoClusters.ckpt'))
                 #saver.restore(sess, os.path.join(models_dir,'1models_540aug_5_5_3_3_537_arm_45rots_noise__relR_nr_NoClusters.ckpt'))
                 
                 #saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_45rots_noise_relR_nr_800Clusters_copy.ckpt'))
-                #saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_90rots_relR_nr_NoClusters_copy.ckpt'))
+                saver.restore(sess, os.path.join(models_dir,'9models_540aug_5_5_3_3_3_5460_90rots_relR_nr_NoClusters.ckpt'))
                 
                 #saver.restore(sess, os.path.join(models_dir,'5models_360aug_5_5_3_3_3_3057_noise_nr_NoClusters_copy0.66.ckpt'))
                 #saver.restore(sess, os.path.join(models_dir,'45models_360aug_5_5_3_3_3_10000_nr_noise_NoClusters.ckpt'))  
@@ -293,7 +299,7 @@ def main(args):
                 desc2 = f0_2s
                 
                 
-                ratios = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
+                ratios = [1, 0.9, 0.8, 0.7, 0.6, 0.5]
                 matches_arr = [None]*len(ratios)
                 for ratio_i, ratio1 in enumerate(ratios):
                     if desc1.shape[0] < desc2.shape[0]:                    
@@ -328,13 +334,13 @@ def main(args):
                     recall_arr[ratio_i] = (len(matches_arr[ratio_i])/float(num_cf))*correct_arr[ratio_i]
                 scene_name = os.path.split(scene_path)[1]
                 for ratio_i, ratio1 in enumerate(ratios):
-                    with open("results_mian_5models{0}.txt".format(ratio1), "a") as myfile:
+                    with open("results_mian_9models_diff{0}.txt".format(ratio1), "a") as myfile:
                         myfile.write('train rotations: ' + str(train_rotations) + '    num samples: ' + str(num_samples) + '    scene: ' + scene_name + "    correct: {0:.4f}".format(correct_arr[ratio_i]) + "    correct best 10: {0:.4f}".format(correct10) + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches_arr[ratio_i]))  + " ratio : {0:.1f}".format(ratio1) + " recall final : {0:.4f}".format(recall_arr[ratio_i]) + '\n')
                         myfile.close()
-                    with open("precision_mian_5models{0}.txt".format(ratio1), "a") as myfile:
+                    with open("precision_mian_9models_diff{0}.txt".format(ratio1), "a") as myfile:
                         myfile.write("{0:.4f}".format(correct_arr[ratio_i]) + '\n')
                         myfile.close()
-                    with open("recall_mian_5models{0}.txt".format(ratio1), "a") as myfile:
+                    with open("recall_mian_9models_diff{0}.txt".format(ratio1), "a") as myfile:
                         myfile.write("{0:.4f}".format(recall_arr[ratio_i]) + '\n')
                         myfile.close()
                 #plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches, N=200)
@@ -354,8 +360,8 @@ main(["", r"/home/titan/hasan/workspace/Conv3d/retrieval_dataset/3D models/Stanf
 """
 
 
-main(["", r"/home/titan/hasan/workspace/Conv3d/laser/3D models/Mian",
-      "/home/titan/hasan/workspace/Conv3d/laser", 
+main(["", r"/home/hasan/hasan/workspace/Conv3d/laser/3D models/Mian",
+      "/home/hasan/hasan/workspace/Conv3d/laser", 
       "51", "-1", "-1", "1", "0.07"])
 
 
