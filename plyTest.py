@@ -1,14 +1,14 @@
 import numpy as np
 from numpy import linalg as LA
 from scipy import spatial
-from mayavi import mlab
+#from mayavi import mlab
 import os.path
 import matplotlib.pyplot as plt
 from sampling import Sampler, SampleAlgorithm
 import time
 from mpl_toolkits.mplot3d import Axes3D
 
-import plotutils
+#import plotutils
 import utils
 
 
@@ -461,12 +461,14 @@ def cluster_list_kmeans(eigen_list, k):
     return km.labels_, []
 
 def main_tsne():
-    fpfh_list = np.load("/home/hasan/workspace/Conv3D/temp_32/eigen_list.npy")
-    #codes = np.load("temp_32/codes")
+    fpfh_list = np.load("/home/hasan/hasan/workspace/temp_5nr/eigen_list.npy")
+    #codes = np.load("/home/hasan/hasan/workspace/temp_5nr/codes.npy")
+    #codes = codes[range(0,codes.shape[0], 720)]
     #labels = np.load("labels.npy")
     #labels, _ = cluster_list(fpfh_list, bandwidth=0.001)
     #labels, _ = cluster_list_kmeans(fpfh_list, k=300)
-    labels = np.load("temp_32/labels_train1000.npy")
+    #labels = np.load("../temp_5nr/labels_train_ae109.npy")
+    labels = np.load("../temp_5nr/labels_train_eigen400.npy")
     #np.save("labels", labels)
     
     t0 = time.time()
@@ -476,26 +478,27 @@ def main_tsne():
     
     model = manifold.TSNE(n_components=2, random_state=0)
     Y = model.fit_transform(fpfh_list)
-    #np.save("tsne", Y)
+    np.save("/home/hasan/hasan/workspace/temp_5nr/tsne_eigen400", Y)
     t = time.time() - t0
-    print("t-SNE: %.2g sec" % t)
+    print("t-SNE: {0:.2f} sec".format(t))
     
     #fig = plt.gcf()
     fig = plt.Figure()
     fig.clf()
     ax = plt.subplot(111)
-    for sample_i, pt in enumerate(Y):
-        if labels[sample_i] != 0:
-            continue
-        pix = plt.imread("/media/hasan/DATA1/shapenet/temp_32/screenshots/sample_" + str(sample_i) + ".png")
-        #cv2.imshow("sample", pix)
-        #cv2.waitKey()
-        imagebox = OffsetImage(pix, zoom=0.25)
-        xy = pt
-        ab = AnnotationBbox(imagebox, xy, xycoords='data', frameon=False)                                  
-        ax.add_artist(ab)
-        #off = 1
-        #plt.imshow(pix, extent=[xy[0] - off, xy[0] + off, xy[1] - off, xy[1] + off])        
+    if(False):
+        for sample_i, pt in enumerate(Y):
+            if labels[sample_i] != 0:
+                continue
+            pix = plt.imread("/media/hasan/DATA1/shapenet/temp_32/screenshots/sample_" + str(sample_i) + ".png")
+            #cv2.imshow("sample", pix)
+            #cv2.waitKey()
+            imagebox = OffsetImage(pix, zoom=0.25)
+            xy = pt
+            ab = AnnotationBbox(imagebox, xy, xycoords='data', frameon=False)                                  
+            ax.add_artist(ab)
+            #off = 1
+            #plt.imshow(pix, extent=[xy[0] - off, xy[0] + off, xy[1] - off, xy[1] + off])        
     
     ax.grid(True)
     ax.scatter(Y[:, 0], Y[:, 1], 20, labels)
@@ -541,6 +544,6 @@ def show_tsdf():
         plotutils.plot_patch_TSDF(patch, cutoff=0.2, name='tsdf')
         mlab.show()
 
-main_show_ply()
+main_tsne()
     
         
