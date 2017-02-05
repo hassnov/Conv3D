@@ -358,6 +358,26 @@ def match_des_test(des1, des2, ratio=1):
     return matches
 
 
+def extrac_same_samples(model_data, model_samples, scene_data, scene_samples, trans_mat, support_radii):
+    full_model_in_scene = transform_pc(model_samples, trans_mat)
+    tree_model_trans = spatial.KDTree(full_model_in_scene)
+    iss = scene_samples
+    _, _, model_in_scene = num_corresponding_features(model_samples, scene_samples, scene_data, trans_mat, support_radii)
+     
+    iss_diff_m = []
+    for sample in iss:
+        d, i = tree_model_trans.query(sample, k=1)
+        if d > support_radii/2:
+            iss_diff_m.append(sample)
+            
+    iss_diff_m = np.asarray(iss_diff_m)
+    new_scene_samples = np.vstack((model_in_scene, iss_diff_m))
+    return new_scene_samples
+    
+    #_, model_samples_reduced, scene_samples_model_trans = num_corresponding_features(model_samples, scene_samples, scene_data, trans_mat, support_radii)
+    #scene_reduced = remove_points_from_pc(scene_data, scene_samples_model_trans)
+     
+
 def get_patches(ref_points, num_rotations, lable, patch_dim):
     #xs, ys, zs = compute_bounding_box_std(ref_points)
 
