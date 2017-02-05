@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from plyfile import PlyData
 from sampling import SampleAlgorithm
-import PlyReader
+import PlyReader_fpfh
 import tensorflow as tf
 import convnnutils
 import time
@@ -106,7 +106,8 @@ def main(args):
     rel_support_radii = float(args[7])
     patch_dim = 32
     relL = 0.05
-    config_files = fill_files_list(os.path.join(scenes_dir, "configs.txt"), scenes_dir)
+    #config_files = fill_files_list(os.path.join(scenes_dir, "configs.txt"), scenes_dir)
+    config_files = None
     fpfh_models = []
     fpfh_scenes = []
     for s in range(0, scenes_count):
@@ -114,21 +115,21 @@ def main(args):
         #if "Scene3" in scene_path or "Scene4" in scene_path:
         #    continue
         print "scene path: ", scene_path
-        reader_scene = PlyReader.PlyReader()
+        reader_scene = PlyReader_fpfh.PlyReader()
         reader_scene.read_ply(scene_path, num_samples=num_samples, add_noise=False, noise_std=0.5, noise_prob=0, noise_factor=0,
                            rotation_axis=[0, 0, 1], rotation_angle=utils.rad(0), 
                            sampling_algorithm=SampleAlgorithm.ISS_Detector)
         pc_diameter = utils.get_pc_diameter(reader_scene.data)
         l_scene = relL*pc_diameter
         support_radii = rel_support_radii*pc_diameter
-        support_radii = 0.0114401621899
+        #support_radii = 0.0114401621899
         print "supprot_radii", support_radii
         reader_scene.set_variables(l=l_scene, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=False)
         print "num before filtering: ", reader_scene.samples.shape[0]
-        reader_scene.samples, reader_scene.sample_indices = filter_scene_samples(reader_scene.data,
-                                                                                  reader_scene.samples, reader_scene.sample_indices,
-                                                                                   support_radii/2, threshold=100)
-        print "num after filtering: ", reader_scene.samples.shape[0]
+        #reader_scene.samples, reader_scene.sample_indices = filter_scene_samples(reader_scene.data,
+        #                                                                          reader_scene.samples, reader_scene.sample_indices,
+        #                                                                           support_radii/2, threshold=100)
+        #print "num after filtering: ", reader_scene.samples.shape[0]
         reader_scene_samles_all = reader_scene.samples
         for model_num in range(len(model_paths)):
             model_path = model_paths[model_num]
@@ -138,35 +139,44 @@ def main(args):
             print "trans mat path: ", model_trans_path
             print "model_path: ", model_path
             
-            if not "Arm" in model_path:
-                print "skipping: ", model_path
-                continue
+            #if not "Arm" in model_path:
+            #    print "skipping: ", model_path
+            #    continue
             
                 
             trans_mat = numpy.loadtxt(model_trans_path, ndmin=2)
-            reader = PlyReader.PlyReader()
+            reader = PlyReader_fpfh.PlyReader()
             reader.read_ply(model_path, num_samples=num_samples, add_noise=False,
                              sampling_algorithm=SampleAlgorithm.ISS_Detector)
             pc_diameter = utils.get_pc_diameter(reader.data)
             l = relL*pc_diameter
-            reader.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=False)
+            reader.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=True)
             
             ##for testing only
             #reader.set_variables(l=l_scene, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50)
             reader_scene.set_variables(l=l, patch_dim=patch_dim, filter_bad_samples=False, filter_threshold=50, use_point_as_mean=False)
+            #reader_scene.samples = utils.transform_pc(reader.samples, trans_mat)
+            #reader_scene.sample_indices = get_indices(reader_scene.data, reader_scene.samples)
             
+            
+            #plotutils.show_pc(reader_scene.data, reader_scene.samples, mode='sphere', scale_factor=0.003)
+            
+            #plotutils.show_pc(reader.data, reader.samples, mode='sphere', scale_factor=0.003)
+            #reader.next_batch_3d(1, 10, len(reader.samples))
+            #plotutils.show_pc(reader_scene.data)
+            #mlab.show()
             """
             #root, ext = os.path.splitext(scene_path)
             if not (model_path in fpfh_models):
                 root, ext = os.path.splitext(model_path)
-                fpfh.compute_fpfh_all(root, l, l)
+                fpfh.compute_fpfh_all(root, l*0.95, l)
                 fpfh_models.append(model_path)
             else:
                 print "model exists: ", model_path
-               
+            
             if not (scene_path in fpfh_scenes):
                 root, ext = os.path.splitext(scene_path)
-                fpfh.compute_fpfh_all(root, l, l)
+                fpfh.compute_fpfh_all(root, l*0.95, l)
                 fpfh_scenes.append(scene_path)
             else:
                 print "scene exists: ", scene_path
@@ -205,7 +215,7 @@ def main(args):
             #correct, wrong = utils.correct_matches_support_radii(reader.samples, reader_scene.samples, matches,
             #                                       pose=trans_mat, N=100000, support_radii=support_radii)
             
-            correct, wrong = utils.correct_matches_support_radii(reader_scene.samples, reader.samples, matches,
+            correct, wrong, _ = utils.correct_matches_support_radii(reader_scene.samples, reader.samples, matches,
                                                    pose=trans_mat, N=100000, support_radii=support_radii)
             #correct, wrong = utils.correct_matches(reader.samples, reader_scene.samples, matches, N=100000)
             best10 = num_samples//10
@@ -216,13 +226,13 @@ def main(args):
             #                                           pose=trans_mat, N=best10, support_radii=support_radii)
             recall = (len(matches)/float(num_cf)*correct)
             scene_name = os.path.split(scene_path)[1]
-            with open("results_fpfh.txt", "a") as myfile:
+            with open("results_fpfh_retrieval.txt", "a") as myfile:
                 myfile.write('train rotations: ' + str(train_rotations) + '    num samples: ' + str(num_samples) + '    scene: ' + scene_name + "    correct: {0:.4f}".format(correct) + "    correct best 10: {0:.4f}".format(correct10) + "  after filtering count: " + str(reader.samples.shape[0]) + "  num matches: " + str(len(matches))  + " ratio : {0:.1f}".format(ratio) + " recall final : {0:.4f}".format(recall) + '\n')
                 myfile.close()
-            with open("precision_fpfh.txt", "a") as myfile:
+            with open("precision_fpfh_retrieval.txt", "a") as myfile:
                 myfile.write("{0:.4f}".format(correct) + '\n')
                 myfile.close()
-            with open("recall_fpfh.txt", "a") as myfile:
+            with open("recall_fpfh_retrieval.txt", "a") as myfile:
                 myfile.write("{0:.4f}".format(recall) + '\n')
                 myfile.close()
             #plotutils.show_matches(reader.data, reader_noise.data, reader.samples, reader_noise.samples, matches, N=200)
@@ -230,16 +240,27 @@ def main(args):
 
 #if __name__ == "__main__":
 #    main(sys.argv)
+
+
+main(["", r"/media/hasan/DATA1/shapenet/retrieval_dataset/3D models/Stanford/Retrieval",
+      "/media/hasan/DATA1/shapenet/retrieval_dataset", 
+      "18", "-1", "-1", "1", "0.07"])
+"""
+main(["", r"/media/hasan/DATA1/shapenet/retrieval_dataset/3D models/Stanford/RandomViews",
+      "/media/hasan/DATA1/shapenet/retrieval_dataset", 
+      "36", "-1", "-1", "1", "0.07"])
+"""
+
 """
 main(["", r"/home/titan/hasan/workspace/Conv3d/retrieval_dataset/3D models/Stanford/RandomViews",
       "/home/titan/hasan/workspace/Conv3d/retrieval_dataset", 
       "36", "-1", "-1", "1", "0.07"])
 """
-
+"""
 main(["", r"/home/hasan/workspace/Conv3D/retrieval_dataset/3D models/Stanford/RandomViews",
       "/home/hasan/workspace/Conv3D/retrieval_dataset", 
       "36", "-1", "-1", "1", "0.07"])
-
+"""
 """
 main(["", r"/home/hasan/workspace/Conv3D/retrieval_dataset/3D models/Stanford/Retrieval",
       "/home/hasan/workspace/Conv3D/retrieval_dataset", 
